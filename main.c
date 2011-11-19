@@ -107,8 +107,6 @@ void gen_rotated(Sprite *sprite)
 		}
 	}
 }
->>>>>>> 63ad9eb43721b9407133463879204f63520cae08
-
 int main( int argc, char* args[] )
 {
 	SDL_Surface* screen = NULL;
