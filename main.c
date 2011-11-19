@@ -15,7 +15,6 @@
 extern unsigned char sprite_png[];
 extern unsigned int sprite_png_len;
 SDL_Surface* screen = NULL;
-float zoom=1;
 
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
@@ -55,6 +54,7 @@ void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect
 }
 
 #define ANGLE_STEP 45
+#define ZOOM 1
 
 void sprite_rotated_rect(Sprite *sprite, Action action, int frame, int angle, SDL_Rect *rect)
 {
@@ -73,7 +73,7 @@ void sprite_gen_rotation(Sprite *sprite)
 		sprite->frame_size.x,
 		sprite->frame_size.y,
 		45, // to maximize size
-		zoom,  // no zoom
+		ZOOM,  // no zoom
 		&sprite->rotated_frame_size.x,
 		&sprite->rotated_frame_size.y
 	);
@@ -103,7 +103,7 @@ void sprite_gen_rotation(Sprite *sprite)
 				sprite_rotated_rect(sprite, action, frame, angle, &dst);
 				SDL_FillRect(element, NULL, 0);
 				SDL_BlitSurface( sprite->source, &src, element, NULL );
-				SDL_Surface *rotozoom = rotozoomSurface(element, angle, zoom, SMOOTHING_ON);
+				SDL_Surface *rotozoom = rotozoomSurface(element, angle, ZOOM, SMOOTHING_ON);
 				dst.x += dst.w/2 - rotozoom->w/2;
 				dst.y += dst.h/2 - rotozoom->h/2; // center
 				SDL_BlitSurface(rotozoom, NULL, sprite->rotated, &dst );
