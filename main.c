@@ -1,6 +1,7 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_rotozoom.h>
+#include <strings.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -85,6 +86,7 @@ void sprite_gen_rotation(Sprite *sprite)
 		&sprite->rotated_frame_size.x,
 		&sprite->rotated_frame_size.y
 	);
+	printf("size %d %d\n", sprite->rotated_frame_size.x, sprite->rotated_frame_size.y);
 
 	if(sprite->rotated)
 		SDL_FreeSurface(sprite->rotated);
@@ -111,13 +113,26 @@ void sprite_gen_rotation(Sprite *sprite)
 				SDL_Surface *rotozoom = rotozoomSurface(element, angle, 1, SMOOTHING_ON);
 				SDL_BlitSurface(rotozoom, NULL, sprite->rotated, &dst );
 				SDL_FreeSurface(rotozoom);
-				printf("%d %d %d\n", action, frame, angle);
 			}
 		}
 	}
 
 	SDL_FreeSurface(element);
 }
+
+void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *img, int img_size)
+{
+	memset(sprite,0,sizeof(Sprite));
+	sprite->origin.x = ox;
+	sprite->origin.y = oy;
+	sprite->frame_size.x = fx;
+	sprite->frame_size.y = fy;
+	sprite->count = c;
+	sprite->source = IMG_Load_RW( SDL_RWFromMem(img, img_size), 1 );
+	sprite->rotated = NULL;
+	sprite_gen_rotation(sprite);
+}
+
 
 int main( int argc, char* args[] )
 {
@@ -130,12 +145,16 @@ int main( int argc, char* args[] )
 	SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
 
 	Sprite zombie;
-	zombie.origin.x = 520 +10/*center*/;
-	zombie.origin.y = 650 -16/*center*/;
-	zombie.frame_size.x = 130;
-	zombie.frame_size.y = 130;
-	zombie.source = IMG_Load_RW( SDL_RWFromMem(sprite_jpg, sprite_jpg_len), 1 );
-	sprite_gen_rotation(&zombie);
+	sprite_init(&zombie, 
+		520 +10/*center*/,
+		650 -16/*center*/,
+		130,
+		130,
+		5,
+		sprite_jpg,
+		sprite_jpg_len
+	);
+
 
 	// window manager
 	{
