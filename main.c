@@ -231,7 +231,7 @@ int main( int argc, char* args[] )
 		if(dx||dy) {
 			step++;
 			if(step%6==0)
-				frame=(frame+((rand()%20)==0?2:1))%5;
+				frame=(frame+((rand()%20)==0?1:1))%12;
 		}
 
 		// clean screen
