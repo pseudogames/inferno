@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "sound.h"
+
 #define FPS 30
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
@@ -29,11 +31,11 @@ typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
 
 typedef struct {
-	point p;
-	vec v;
-	float angle;
-	float health;
-	int frame;
+    point p;
+    vec v;
+    float angle;
+    float health;
+    int frame;
 };
 
 int main( int argc, char* args[] )
