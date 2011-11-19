@@ -1,7 +1,23 @@
 #import "sound.h"
 
 Mix_Music *music = NULL;
+Mix_Chunk *punch = NULL;
+int punchChannel = -1;
+
 IAudio a; 
+
+
+void loadEffects(){
+    punch = Mix_LoadWAV("punch.wav");
+}
+
+
+void playPunch(){ 
+    /*if(punchChannel < 0) {*/
+        punchChannel = Mix_PlayChannel(-1, punch, 0);
+        /*Mix_HaltChannel(punchChannel);*/
+    /*}*/
+}
 
 void initMusic() { 
     a.rate = 22050;
@@ -19,9 +35,8 @@ void initMusic() {
 
 void handleMusic() { 
     if(music == NULL) {
-        initMusic();
         music = Mix_LoadMUS("music.ogg");
-        Mix_PlayMusic(music, 0);
+        Mix_PlayMusic(music, 1);
         Mix_HookMusicFinished(doneMusic);
 
     } else {
@@ -32,7 +47,7 @@ void handleMusic() {
 }
 
 void doneMusic() {
-  Mix_HaltMusic();
-  Mix_FreeMusic(music);
-  music = NULL;
+    Mix_HaltMusic();
+    Mix_FreeMusic(music);
+    music = NULL;
 }

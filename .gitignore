@@ -2,5 +2,7 @@
 *.png
 *.jpg
 *.bmp
+*.ogg
+*.wav
 sprite.c
 inferno

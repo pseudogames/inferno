@@ -10,3 +10,5 @@ typedef struct{
 void initMusic();
 void handleMusinc();
 void doneMusic();
+void loadEffects();
+void playPunch();

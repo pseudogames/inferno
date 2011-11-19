@@ -171,6 +171,12 @@ int main( int argc, char* args[] )
 		SDL_WM_SetCaption("inferno", "inferno");
 	}
 
+    // music manager
+    initMusic();
+    
+    // effects manager 
+    loadEffects();
+
 	screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
 	// player setup
@@ -187,7 +193,6 @@ int main( int argc, char* args[] )
 	unsigned int t=0,lt=0;
 	int pressed[SDLK_LAST] = {0};
 	while(running) {
-
 		SDL_Event event;
 		if( SDL_PollEvent( &event ) )
 		{
@@ -200,7 +205,14 @@ int main( int argc, char* args[] )
 						case SDLK_ESCAPE:
 						case SDLK_q:
 							running = 0;
-							break;
+                            break;
+                        case SDLK_m:
+                            handleMusic();
+                            break;
+
+                        case SDLK_p:
+                            playPunch();
+                            break;
 					}
 					//nobreak, slip...
 				case SDL_KEYUP:
@@ -214,6 +226,7 @@ int main( int argc, char* args[] )
 		down = down*(1-accel)+pressed[SDLK_DOWN ]*speed*accel;
 		left = left*(1-accel)+pressed[SDLK_LEFT ]*speed*accel;
 		right=right*(1-accel)+pressed[SDLK_RIGHT]*speed*accel;
+
 		//printf("x %d y %d up %d dw %d le %d ri %d acc %f\n",x,y,up,down,left,right,accel);
 		int dx=right-left;
 		int dy=down-up;
