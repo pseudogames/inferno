@@ -1,0 +1,6 @@
+*.o
+*.png
+*.jpg
+*.bmp
+sprite.c
+inferno
