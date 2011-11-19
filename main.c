@@ -79,7 +79,6 @@ void sprite_gen_rotation(Sprite *sprite)
 		&sprite->rotated_frame_size.x,
 		&sprite->rotated_frame_size.y
 	);
-	printf("size %d %d\n", sprite->rotated_frame_size.x, sprite->rotated_frame_size.y);
 
 	if(sprite->rotated)
 		SDL_FreeSurface(sprite->rotated);
@@ -88,7 +87,7 @@ void sprite_gen_rotation(Sprite *sprite)
 			sprite->rotated_frame_size.x * sprite->count * 360/ANGLE_STEP,
 			sprite->rotated_frame_size.y * ACTION_COUNT,
 			32, 0,0,0,0);
-	printf("total size %d %d %d\n", sprite->rotated->w, sprite->rotated->h, 360/ANGLE_STEP);
+	printf("rotation cache size %d %d for %d angles\n", sprite->rotated->w, sprite->rotated->h, 360/ANGLE_STEP);
 
 	SDL_Surface *element = SDL_CreateRGBSurface(SDL_SWSURFACE, 
 			sprite->frame_size.x, 
@@ -141,15 +140,14 @@ void body_init(Body *body, Sprite *sprite, int max_health, float max_vel)
 
 void body_move(Body *body, int angle)
 {
-	printf("mov angle %d\n", angle);
 	float f = .2, k = .8;
-	body->angle = (int)(360 + body->angle * (1-f) + angle * f) % 360;
-	//float a = ((int)(360 + body->angle * (1-k) + angle * k) % 360) * M_PI / 180;
+	body->angle = (int)(720 + body->angle * (1-f) + angle * f) % 720;
+	//float a = ((int)(720 + body->angle * (1-k) + angle * k) % 720) * M_PI / 180;
 	float a = body->angle * M_PI / 180;
-	printf("%d %f\n", body->angle, a);
+	// FIXME virando para lado contrario quando tem que cruzar a borda entre 0 e 360
 	body->frame = (body->frame+1) % body->sprite->count;
 	body->pos.x += cos(a) * body->max_vel;
-	body->pos.y += sin(a) * body->max_vel;
+	body->pos.y -= sin(a) * body->max_vel;
 
 	// TODO collision
 }
@@ -228,10 +226,12 @@ int main( int argc, char* args[] )
 
                         case SDLK_p:
                             playPunch();
+							player.action = ACTION_ATTACK;
                             break;
 
                         case SDLK_s:
                             playShot();
+							player.action = ACTION_MOVE;
                             break;
 
                         case SDLK_i:
@@ -253,8 +253,8 @@ int main( int argc, char* args[] )
 		right=right*(1-accel)+pressed[SDLK_RIGHT]*accel;
 		float dx=right-left;
 		float dy=down-up;
-		if(dx||dy) {
-			body_move(&player, (int)(360+atan2(-dy,dx)*180/M_PI)%360);
+		if(fabs(dx)>0.1||fabs(dy)>0.1) {
+			body_move(&player, (int)(720+atan2(-dy,dx)*180/M_PI)%360);
 		}
 
 		// clean screen
