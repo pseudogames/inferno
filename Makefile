@@ -1,3 +1,4 @@
+CFLAGS=-g
 
 all: inferno
 
@@ -11,14 +12,16 @@ sprite.c: sprite.jpg
 	xxd -i $^ > $@
 
 sprite.o: sprite.c
-	gcc $< -c -o $@
+	gcc $(CFLAGS) $< -c -o $@
 
 main.o: main.c
-	gcc $< `sdl-config --cflags` -c -o $@
+	gcc $(CFLAGS) $< `sdl-config --cflags` -c -o $@
 
 sound.o: sound.c
 	gcc $< `sdl-config --cflags` -c -o $@
 
-inferno: main.o sprite.o sound.o
-	gcc $^ -lSDL_gfx -lSDL_image -lSDL_mixer `sdl-config --libs` -o $@
+inferno: main.o sprite.o
+	gcc $(CFLAGS) $(LDFLAGS) $^ -lSDL_gfx -lSDL_image -lSDL_mixer `sdl-config --libs` -o $@
 
+debug: inferno
+	gdb $<
