@@ -12,6 +12,8 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define RAD2DEG(a) ((a)*180/M_PI)
 
+int running = 1;
+
 extern unsigned char sprite_png[];
 extern unsigned int sprite_png_len;
 
@@ -24,6 +26,13 @@ typedef enum {
 	ACTION_DEATH, 
 	ACTION_COUNT
 } Action;
+
+typedef enum { 
+    GAME_MENU = 0,
+    GAME_PLAY = 1, 
+    GAME_PAUSE = 2,
+    GAME_CREDIT = 3
+} Game; 
 
 typedef struct {
 	point origin;
@@ -160,6 +169,53 @@ void body_draw(Body *body, SDL_Surface *screen)
 		SDL_BlitSurface( body->sprite->rotated, &src, screen, &dst );
 }
 
+void state_game_runing(SDL_Event event) { 
+    switch(event.type) {
+        case SDL_QUIT:
+            running=0;
+            break;
+        case SDL_KEYDOWN:
+            switch(event.key.keysym.sym) {
+                case SDLK_ESCAPE:
+                case SDLK_q:
+                    running = 0;
+                    break;
+                case SDLK_m:
+                    handleMusic();
+                    break;
+
+                case SDLK_p:
+                    playPunch();
+                    player.action = ACTION_ATTACK;
+                    break;
+
+                case SDLK_s:
+                    playShot();
+                    player.action = ACTION_MOVE;
+                    break;
+
+                case SDLK_i:
+                    playPick();
+                    break;
+            }
+            //nobreak, slip...
+        case SDL_KEYUP:
+            pressed[event.key.keysym.sym] = event.type == SDL_KEYDOWN;
+            break;
+    }
+}
+
+void timing_control(Uint32 start) { 
+    Uint32 end = SDL_GetTicks();
+    int actual_delta = end - start;
+    int expected_delta = 1000/FPS;
+    int delay = MAX(0, expected_delta - actual_delta);
+    SDL_Delay(delay);
+}
+
+// global runing
+
+
 int main( int argc, char* args[] )
 {
 	SDL_Surface* screen = NULL;
@@ -202,49 +258,16 @@ int main( int argc, char* args[] )
 	float accel=.2;
 
 	// main loop
-	int running = 1;
 	unsigned int t=0,lt=0;
 	int pressed[SDLK_LAST] = {0};
+
 	while(running) {
 		Uint32 start = SDL_GetTicks();
 		SDL_Event event;
 		if( SDL_PollEvent( &event ) )
 		{
-			switch(event.type) {
-				case SDL_QUIT:
-					running=0;
-					break;
-				case SDL_KEYDOWN:
-					switch(event.key.keysym.sym) {
-						case SDLK_ESCAPE:
-						case SDLK_q:
-							running = 0;
-                            break;
-                        case SDLK_m:
-                            handleMusic();
-                            break;
-
-                        case SDLK_p:
-                            playPunch();
-							player.action = ACTION_ATTACK;
-                            break;
-
-                        case SDLK_s:
-                            playShot();
-							player.action = ACTION_MOVE;
-                            break;
-
-                        case SDLK_i:
-                            playPick();
-                            break;
-					}
-					//nobreak, slip...
-				case SDL_KEYUP:
-					pressed[event.key.keysym.sym] = event.type == SDL_KEYDOWN;
-					break;
-			}
+            state_game_runing();
 		}
-
 
 		// move player
 		up   =   up*(1-accel)+pressed[SDLK_UP   ]*accel;
@@ -264,12 +287,7 @@ int main( int argc, char* args[] )
 
 		SDL_Flip( screen );
 
-		// timing control
-		Uint32 end = SDL_GetTicks();
-		int actual_delta = end-start;
-		int expected_delta = 1000/FPS;
-		int delay = MAX(0, expected_delta - actual_delta);
-		SDL_Delay(delay);
+        timing_control(start);
 	}
 
 	// TODO free surfaces, like SDL_FreeSurface( sprite );
