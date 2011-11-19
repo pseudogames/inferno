@@ -7,17 +7,23 @@
 
 #include "sound.h"
 
-#define FPS 30
+#define FPS 9
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define RAD2DEG(a) ((a)*180/M_PI)
 
 extern unsigned char sprite_png[];
 extern unsigned int sprite_png_len;
-SDL_Surface* screen = NULL;
 
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
+
+typedef enum { 
+	ACTION_MOVE=0, 
+	ACTION_ATTACK, 
+	ACTION_DEATH, 
+	ACTION_COUNT
+} Action;
 
 typedef struct {
 	point origin;
@@ -29,20 +35,16 @@ typedef struct {
 } Sprite;
 
 typedef struct {
-	point p;
-	vec v;
+	point pos;
+	vec vel;
+	float max_vel;
 	int angle; // degree
+	int max_health;
 	int health;
+	Action action;
 	int frame;
 	Sprite *sprite;
-} Character;
-
-typedef enum { 
-	ACTION_MOVE=0, 
-	ACTION_ATTACK, 
-	ACTION_DEATH, 
-	ACTION_COUNT
-} Action;
+} Body;
 
 void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect)
 {
@@ -129,22 +131,46 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
 	sprite_gen_rotation(sprite);
 }
 
+void body_init(Body *body, Sprite *sprite, int max_health, float max_vel)
+{
+	memset(body,0,sizeof(Body));
+	body->health = body->max_health = max_health;
+	body->max_vel = max_vel;
+	body->sprite = sprite;
+}
+
+void body_move(Body *body, int angle)
+{
+	printf("mov angle %d\n", angle);
+	float f = .2, k = .8;
+	body->angle = (int)(360 + body->angle * (1-f) + angle * f) % 360;
+	//float a = ((int)(360 + body->angle * (1-k) + angle * k) % 360) * M_PI / 180;
+	float a = body->angle * M_PI / 180;
+	printf("%d %f\n", body->angle, a);
+	body->frame = (body->frame+1) % body->sprite->count;
+	body->pos.x += cos(a) * body->max_vel;
+	body->pos.y += sin(a) * body->max_vel;
+
+	// TODO collision
+}
+
+void body_draw(Body *body, SDL_Surface *screen)
+{
+		SDL_Rect dst = {body->pos.x,body->pos.y,0,0};
+		SDL_Rect src;
+		sprite_rotated_rect(body->sprite, body->action, body->frame, body->angle, &src);
+		SDL_BlitSurface( body->sprite->rotated, &src, screen, &dst );
+}
 
 int main( int argc, char* args[] )
 {
-	//SDL_Surface* screen = NULL;
-	SDL_Surface* sprite = NULL;
-	SDL_Surface* icon = NULL;
-	SDL_Surface *player_frame = NULL;
+	SDL_Surface* screen = NULL;
 
-	// init
 	SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
 
-
-	// window manager
-	{
-		icon = SDL_CreateRGBSurface(SDL_SWSURFACE, 64, 64, 32, 0,0,0,0);
-
+#if 0
+	{ // window manager
+		SDL_Surface* icon = SDL_CreateRGBSurface(SDL_SWSURFACE, 64, 64, 32, 0,0,0,0);
 		SDL_Rect src = {32,32,64,64};
 		SDL_Rect dst = {0,0,0,0};
 		SDL_BlitSurface( sprite, &src, icon, &dst );
@@ -152,6 +178,7 @@ int main( int argc, char* args[] )
 		SDL_FreeSurface( icon );
 		SDL_WM_SetCaption("inferno", "inferno");
 	}
+#endif
 
     // music manager
     initMusic();
@@ -161,7 +188,6 @@ int main( int argc, char* args[] )
 
 	screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
-
 	// player setup
 	Sprite zombie;
 	sprite_init(&zombie, 
@@ -170,19 +196,19 @@ int main( int argc, char* args[] )
 		sprite_png, sprite_png_len // source
 	);
 
+	Body player;
+	body_init(&player, &zombie, 100, 10);
 
-	int x=0, y=0;
-	int frame=0, step=0;
-	int speed=2;
-	int up=0,down=0,left=0,right=0;
-	float accel=.5;
-	int angle=0;
+
+	float up=0,down=0,left=0,right=0;
+	float accel=.2;
 
 	// main loop
 	int running = 1;
 	unsigned int t=0,lt=0;
 	int pressed[SDLK_LAST] = {0};
 	while(running) {
+		Uint32 start = SDL_GetTicks();
 		SDL_Event event;
 		if( SDL_PollEvent( &event ) )
 		{
@@ -211,58 +237,34 @@ int main( int argc, char* args[] )
 			}
 		}
 
+
 		// move player
-		up   =   up*(1-accel)+pressed[SDLK_UP   ]*speed*accel;
-		down = down*(1-accel)+pressed[SDLK_DOWN ]*speed*accel;
-		left = left*(1-accel)+pressed[SDLK_LEFT ]*speed*accel;
-		right=right*(1-accel)+pressed[SDLK_RIGHT]*speed*accel;
-
-		//printf("x %d y %d up %d dw %d le %d ri %d acc %f\n",x,y,up,down,left,right,accel);
-		int dx=right-left;
-		int dy=down-up;
-		x+=dx;
-		y+=dy;
-		if(dx||dy) angle = atan2(-dy,dx)*180/M_PI;
-		//printf("%d %d %d\n",dx,dy, angle);
-
-		// TODO collision
-
-		// animation
+		up   =   up*(1-accel)+pressed[SDLK_UP   ]*accel;
+		down = down*(1-accel)+pressed[SDLK_DOWN ]*accel;
+		left = left*(1-accel)+pressed[SDLK_LEFT ]*accel;
+		right=right*(1-accel)+pressed[SDLK_RIGHT]*accel;
+		float dx=right-left;
+		float dy=down-up;
 		if(dx||dy) {
-			step++;
-			if(step%6==0)
-				frame=(frame+((rand()%20)==0?2:1))%5;
+			body_move(&player, (int)(360+atan2(-dy,dx)*180/M_PI)%360);
 		}
 
 		// clean screen
 		SDL_FillRect(screen,NULL, 0);
 
-		// draw player
-		SDL_Rect dst = {x,y,0,0};
-#if 0
-		SDL_FillRect(screen,&dst, 0xffffff);
-#else
-		SDL_Rect src;
-		Action action = ACTION_MOVE;
-		sprite_rotated_rect(&zombie, action, frame, angle, &src);
-		//printf("%d %d %d %d %f %d %d\n", src.x, src.y, src.w, src.h, angle, zombie.rotated->w, zombie.rotated->h);
-		SDL_BlitSurface( zombie.rotated, &src, screen, &dst );
-		//SDL_BlitSurface( zombie.rotated, NULL, screen, NULL ); // debug
-		//SDL_BlitSurface( zombie.source, NULL, screen, NULL ); // debug
-#endif
+		body_draw(&player, screen);
 
 		SDL_Flip( screen );
 
 		// timing control
-		lt = t; t = SDL_GetTicks();
-		int actual_delta = t-lt;
+		Uint32 end = SDL_GetTicks();
+		int actual_delta = end-start;
 		int expected_delta = 1000/FPS;
 		int delay = MAX(0, expected_delta - actual_delta);
 		SDL_Delay(delay);
-		printf("%d\n", delay);
 	}
 
-	SDL_FreeSurface( sprite );
+	// TODO free surfaces, like SDL_FreeSurface( sprite );
 
 	SDL_Quit();
 
