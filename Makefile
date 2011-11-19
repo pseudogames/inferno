@@ -3,12 +3,12 @@ CFLAGS=-g
 all: inferno
 
 clean:
-	rm -fv inferno inferno.exe sprite.jpg sprite.c main.o sprite.o
+	rm -fv inferno inferno.exe sprite.png sprite.c main.o sprite.o
 
-sprite.jpg: ~/Dropbox/inferno/zombie_topdown.png 
+sprite.png: ~/Dropbox/inferno/zombie_topdown.png 
 	convert $< $@
 
-sprite.c: sprite.jpg
+sprite.c: sprite.png
 	xxd -i $^ > $@
 
 sprite.o: sprite.c

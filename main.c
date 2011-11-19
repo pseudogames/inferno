@@ -10,23 +10,12 @@
 #define FPS 30
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
+#define RAD2DEG(a) ((a)*180/M_PI)
 
-extern unsigned char sprite_jpg[];
-extern unsigned int sprite_jpg_len;
-
-/* SDL interprets each pixel as a 32-bit number, so our masks must depend
-   on the endianness (byte order) of the machine */
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-Uint32 rmask = 0xff000000;
-Uint32 gmask = 0x00ff0000;
-Uint32 bmask = 0x0000ff00;
-Uint32 amask = 0x000000ff;
-#else
-Uint32 rmask = 0x000000ff;
-Uint32 gmask = 0x0000ff00;
-Uint32 bmask = 0x00ff0000;
-Uint32 amask = 0xff000000;
-#endif
+extern unsigned char sprite_png[];
+extern unsigned int sprite_png_len;
+SDL_Surface* screen = NULL;
+float zoom=1;
 
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
@@ -43,13 +32,11 @@ typedef struct {
 typedef struct {
 	point p;
 	vec v;
-	float angle;
-	float health;
+	int angle; // degree
+	int health;
 	int frame;
 	Sprite *sprite;
 } Character;
-
-#define ANGLE_STEP 45
 
 typedef enum { 
 	ACTION_MOVE=0, 
@@ -67,12 +54,14 @@ void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect
 	rect->h = sprite->frame_size.y;
 }
 
-void sprite_rotated_rect(Sprite *sprite, Action action, int frame, float angle, SDL_Rect *rect)
+#define ANGLE_STEP 45
+
+void sprite_rotated_rect(Sprite *sprite, Action action, int frame, int angle, SDL_Rect *rect)
 {
 	frame = frame % sprite->count;
-	int angle_index = (angle+ANGLE_STEP/2) / ANGLE_STEP;
+	int angle_index = ((int)(360+angle+ANGLE_STEP/2) % 360) / ANGLE_STEP;
 	rect->x = frame *sprite->rotated_frame_size.x
-	        + sprite->frame_size.x*sprite->count*angle_index;
+	        + sprite->rotated_frame_size.x*sprite->count*angle_index;
 	rect->y = action*sprite->rotated_frame_size.y;
 	rect->w = sprite->rotated_frame_size.x;
 	rect->h = sprite->rotated_frame_size.y;
@@ -84,7 +73,7 @@ void sprite_gen_rotation(Sprite *sprite)
 		sprite->frame_size.x,
 		sprite->frame_size.y,
 		45, // to maximize size
-		1,  // no zoom
+		zoom,  // no zoom
 		&sprite->rotated_frame_size.x,
 		&sprite->rotated_frame_size.y
 	);
@@ -96,12 +85,13 @@ void sprite_gen_rotation(Sprite *sprite)
 	sprite->rotated = SDL_CreateRGBSurface(SDL_SWSURFACE, 
 			sprite->rotated_frame_size.x * sprite->count * 360/ANGLE_STEP,
 			sprite->rotated_frame_size.y * ACTION_COUNT,
-			32, rmask, gmask, bmask, amask);
+			32, 0,0,0,0);
+	printf("total size %d %d %d\n", sprite->rotated->w, sprite->rotated->h, 360/ANGLE_STEP);
 
 	SDL_Surface *element = SDL_CreateRGBSurface(SDL_SWSURFACE, 
-			sprite->frame_size.x, sprite->frame_size.y, 32,
-			rmask, gmask, bmask, amask);
-
+			sprite->frame_size.x, 
+			sprite->frame_size.y,
+			32, 0,0,0,0);
 
 	int frame, action, angle;
 	for(action=0; action<ACTION_COUNT; action++) {
@@ -111,9 +101,13 @@ void sprite_gen_rotation(Sprite *sprite)
 			for(angle=0; angle<360; angle+=ANGLE_STEP) {
 				SDL_Rect dst;
 				sprite_rotated_rect(sprite, action, frame, angle, &dst);
+				SDL_FillRect(element, NULL, 0);
 				SDL_BlitSurface( sprite->source, &src, element, NULL );
-				SDL_Surface *rotozoom = rotozoomSurface(element, angle, 1, SMOOTHING_ON);
+				SDL_Surface *rotozoom = rotozoomSurface(element, angle, zoom, SMOOTHING_ON);
+				dst.x += dst.w/2 - rotozoom->w/2;
+				dst.y += dst.h/2 - rotozoom->h/2; // center
 				SDL_BlitSurface(rotozoom, NULL, sprite->rotated, &dst );
+				//SDL_BlitSurface(rotozoom, NULL, screen, &dst ); SDL_Flip(screen); SDL_Delay(50); // debug
 				SDL_FreeSurface(rotozoom);
 			}
 		}
@@ -138,7 +132,7 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
 
 int main( int argc, char* args[] )
 {
-	SDL_Surface* screen = NULL;
+	//SDL_Surface* screen = NULL;
 	SDL_Surface* sprite = NULL;
 	SDL_Surface* icon = NULL;
 	SDL_Surface *player_frame = NULL;
@@ -146,22 +140,10 @@ int main( int argc, char* args[] )
 	// init
 	SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
 
-	Sprite zombie;
-	sprite_init(&zombie, 
-		520 +10/*center*/,
-		650 -16/*center*/,
-		130,
-		130,
-		5,
-		sprite_jpg,
-		sprite_jpg_len
-	);
-
 
 	// window manager
 	{
-		icon = SDL_CreateRGBSurface(SDL_SWSURFACE, 64, 64, 32,
-				rmask, gmask, bmask, amask);
+		icon = SDL_CreateRGBSurface(SDL_SWSURFACE, 64, 64, 32, 0,0,0,0);
 
 		SDL_Rect src = {32,32,64,64};
 		SDL_Rect dst = {0,0,0,0};
@@ -173,14 +155,22 @@ int main( int argc, char* args[] )
 
 	screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
+
 	// player setup
+	Sprite zombie;
+	sprite_init(&zombie, 
+		520 +10/*center*/, 650 -16/*center*/, // origin
+		130, 130, 5, // frame size and count
+		sprite_png, sprite_png_len // source
+	);
+
 
 	int x=0, y=0;
 	int frame=0, step=0;
 	int speed=8;
 	int up=0,down=0,left=0,right=0;
 	float accel=.2;
-	float angle=0;
+	int angle=0;
 
 	// main loop
 	int running = 1;
@@ -219,8 +209,8 @@ int main( int argc, char* args[] )
 		int dy=down-up;
 		x+=dx;
 		y+=dy;
-		if(dx||dy) angle = atan2(-dy,dx);
-		//printf("%d %d %f\n",dx,dy, angle);
+		if(dx||dy) angle = atan2(-dy,dx)*180/M_PI;
+		//printf("%d %d %d\n",dx,dy, angle);
 
 		// TODO collision
 
@@ -242,7 +232,10 @@ int main( int argc, char* args[] )
 		SDL_Rect src;
 		Action action = ACTION_MOVE;
 		sprite_rotated_rect(&zombie, action, frame, angle, &src);
+		//printf("%d %d %d %d %f %d %d\n", src.x, src.y, src.w, src.h, angle, zombie.rotated->w, zombie.rotated->h);
 		SDL_BlitSurface( zombie.rotated, &src, screen, &dst );
+		//SDL_BlitSurface( zombie.rotated, NULL, screen, NULL ); // debug
+		//SDL_BlitSurface( zombie.source, NULL, screen, NULL ); // debug
 #endif
 
 		SDL_Flip( screen );
