@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "sound.h"
+
 #define FPS 30
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
