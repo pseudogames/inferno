@@ -1,22 +1,38 @@
 #import "sound.h"
 
 Mix_Music *music = NULL;
-Mix_Chunk *punch = NULL;
-int punchChannel = -1;
+Mix_Chunk *punchptr[5];
+Mix_Chunk *shotptr;
+Mix_Chunk *pickptr;
 
 IAudio a; 
 
+int punchChannel, shotChannel, pickChannel  = -1;
+
+char punch[50];
 
 void loadEffects(){
-    punch = Mix_LoadWAV("punch.wav");
+    int i;
+    for (i = 0; i < 5; i++) {
+        sprintf(punch, "./audio/punch/punch%d.wav", i);
+        punchptr[i] = Mix_LoadWAV(punch);
+    }
+
+    shotptr = Mix_LoadWAV("./audio/shot/m60.wav");
+    pickptr = Mix_LoadWAV("./audio/shot/pick.wav");
 }
 
 
 void playPunch(){ 
-    /*if(punchChannel < 0) {*/
-        punchChannel = Mix_PlayChannel(-1, punch, 0);
-        /*Mix_HaltChannel(punchChannel);*/
-    /*}*/
+    punchChannel = Mix_PlayChannel(-1, punchptr[rand() %  5], 0);
+}
+
+void playShot() {
+    shotChannel = Mix_PlayChannel(-1, shotptr, 0);
+}
+
+void playPick() {
+    pickChannel = Mix_PlayChannel(-1, pickptr, 0);
 }
 
 void initMusic() { 
