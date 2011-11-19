@@ -17,5 +17,5 @@ main.o: main.c
 	gcc $< `sdl-config --cflags` -c -o $@
 
 inferno: main.o sprite.o
-	gcc $^ -lSDL_image `sdl-config --libs` -o $@
+	gcc $^ -lSDL_gfx -lSDL_image `sdl-config --libs` -o $@
 

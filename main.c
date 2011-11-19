@@ -1,5 +1,7 @@
-#include "SDL.h"
-#include "SDL_image.h"
+#include <SDL.h>
+#include <SDL_image.h>
+#include <SDL_rotozoom.h>
+#include <stdio.h>
 
 #define FPS 30
 #define MIN(a,b) ((a)<(b)?(a):(b))
@@ -29,10 +31,11 @@ int main( int argc, char* args[] )
     SDL_Surface* sprite = NULL;
     SDL_Surface* icon = NULL;
 
+	// init
 	SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
-
 	sprite = IMG_Load_RW( SDL_RWFromMem(sprite_jpg, sprite_jpg_len), 1 );
 
+	// window manager
 	{
 		icon = SDL_CreateRGBSurface(SDL_SWSURFACE, 64, 64, 32,
 				rmask, gmask, bmask, amask);
@@ -41,52 +44,70 @@ int main( int argc, char* args[] )
 		SDL_Rect dst = {0,0,0,0};
 		SDL_BlitSurface( sprite, &src, icon, &dst );
 		SDL_WM_SetIcon(icon, NULL);
+		SDL_FreeSurface( icon );
+		SDL_WM_SetCaption("inferno", "inferno");
 	}
-	SDL_WM_SetCaption("inferno", "inferno");
 
 	screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
-	int dx=0, dy=0;
+	// player setup
 	int x=0, y=0;
-	int i=0;
-	int d=4;
+	int frame=0;
+	int speed=8;
+	int up=0,down=0,left=0,right=0;
+	float accel=.2;
 
+	// main loop
 	int running = 1;
 	unsigned int t=0,lt=0;
+	int pressed[SDLK_LAST] = {0};
 	while(running) {
+
 		SDL_Event event;
 		if( SDL_PollEvent( &event ) )
 		{
-			if( event.type == SDL_KEYUP )
-			{
-				dx=dy=0;
-			} else if( event.type == SDL_KEYDOWN )
-			{
-
-				switch( event.key.keysym.sym )
-				{
-					case SDLK_UP: dy=-d; break;
-					case SDLK_DOWN: dy=+d; break;
-					case SDLK_LEFT: dx=-d; break;
-					case SDLK_RIGHT: dx=+d; break;
+			switch(event.type) {
+			case SDL_QUIT:
+				running=0;
+			break;
+			case SDL_KEYDOWN:
+				switch(event.key.keysym.sym) {
+				case SDLK_ESCAPE:
+				case SDLK_q:
+					running = 0;
+				break;
 				}
-			}
-
-			else if( event.type == SDL_QUIT )
-			{
-				running = 0;
+			//nobreak, slip...
+			case SDL_KEYUP:
+				pressed[event.key.keysym.sym] = event.type == SDL_KEYDOWN;
+			break;
 			}
 		}
-		x+=dx;y+=dy;
 
-		if(dx||dy)
-			i=(i+1)%5;
+		// move player
+		up   =   up*(1-accel)+pressed[SDLK_UP   ]*speed*accel;
+		down = down*(1-accel)+pressed[SDLK_DOWN ]*speed*accel;
+		left = left*(1-accel)+pressed[SDLK_LEFT ]*speed*accel;
+		right=right*(1-accel)+pressed[SDLK_RIGHT]*speed*accel;
+		//printf("x %d y %d up %d dw %d le %d ri %d acc %f\n",x,y,up,down,left,right,accel);
+		x+=right-left;
+		y+=down-up;
+		// TODO collision
+
+		if(right-left||down-up)
+			frame=(frame+1)%5;
+
+		// clean screen
 		SDL_FillRect(screen,NULL, 0);
-		SDL_Rect src = {(5+i)*130,0,130,115};
+
+		// draw player
+		//SDL_FillRect(screen,&dst, 0xffffff);
+		SDL_Rect src = {(5+frame)*130,0,130,115};
 		SDL_Rect dst = {x,y,0,0};
 		SDL_BlitSurface( sprite, &src, screen, &dst );
-		//SDL_FillRect(screen,&dst, 0xffffff);
 		SDL_Flip( screen );
+
+		// timing control
 		lt = t; t = SDL_GetTicks();
 		int actual_delta = t-lt;
 		int expected_delta = 1000/FPS;
@@ -95,7 +116,6 @@ int main( int argc, char* args[] )
 	}
 
     SDL_FreeSurface( sprite );
-    //SDL_FreeSurface( icon );
 
     SDL_Quit();
 
