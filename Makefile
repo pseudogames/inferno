@@ -5,7 +5,7 @@ all: inferno
 clean:
 	rm -fv inferno inferno.exe sprite.png sprite.c main.o sprite.o
 
-sprite.png: ~/Dropbox/inferno/zombie_topdown.png 
+sprite.png: ~/Dropbox/inferno/inferno_zombie_1.png 
 	convert $< $@
 
 sprite.c: sprite.png

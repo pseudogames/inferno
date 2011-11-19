@@ -159,17 +159,17 @@ int main( int argc, char* args[] )
 	// player setup
 	Sprite zombie;
 	sprite_init(&zombie, 
-		520 +10/*center*/, 650 -16/*center*/, // origin
-		130, 130, 5, // frame size and count
+		0, 0, // origin
+		114, 114, 12, // frame size and count
 		sprite_png, sprite_png_len // source
 	);
 
 
 	int x=0, y=0;
 	int frame=0, step=0;
-	int speed=8;
+	int speed=2;
 	int up=0,down=0,left=0,right=0;
-	float accel=.2;
+	float accel=.5;
 	int angle=0;
 
 	// main loop
@@ -217,7 +217,7 @@ int main( int argc, char* args[] )
 		// animation
 		if(dx||dy) {
 			step++;
-			if(step%4==0)
+			if(step%6==0)
 				frame=(frame+((rand()%20)==0?2:1))%5;
 		}
 
@@ -246,6 +246,7 @@ int main( int argc, char* args[] )
 		int expected_delta = 1000/FPS;
 		int delay = MAX(0, expected_delta - actual_delta);
 		SDL_Delay(delay);
+		printf("%d\n", delay);
 	}
 
 	SDL_FreeSurface( sprite );
