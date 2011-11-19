@@ -203,6 +203,14 @@ int main( int argc, char* args[] )
                         case SDLK_p:
                             playPunch();
                             break;
+
+                        case SDLK_s:
+                            playShot();
+                            break;
+
+                        case SDLK_i:
+                            playPick();
+                            break;
 					}
 					//nobreak, slip...
 				case SDL_KEYUP:
