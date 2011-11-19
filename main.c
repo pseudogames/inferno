@@ -31,30 +31,100 @@ typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
 
 typedef struct {
-    point p;
-    vec v;
-    float angle;
-    float health;
-    int frame;
-};
+	point origin;
+	point size;
+	int count;
+	SDL_Surface *source;
+	point rotated_size;
+	SDL_Surface *rotated;
+} Sprite;
+
+typedef struct {
+	point p;
+	vec v;
+	float angle;
+	float health;
+	int frame;
+	Sprite *sprite;
+} Character;
+
+const int angle_step = 45;
+
+typedef enum { 
+	ACTION_MOVE=0, 
+	ACTION_ATTACK, 
+	ACTION_DEATH, 
+	ACTION_COUNT
+} Action;
+
+void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect)
+{
+	frame = frame % sprite->count;
+	rect->x = sprite->base.x + frame *sprite.size.x;
+	rect->y = sprite->base.y + action*sprite.size.y;
+	rect->w = sprite->size.x;
+	rect->h = sprite->size.y;
+}
+
+void sprite_rotated_rect(Sprite *sprite, Action action, int frame, float angle, SDL_Rect *rect)
+{
+	frame = frame % sprite->count;
+	angle_index = (angle+angle_step/2) / angle_step;
+	rect->x = sprite->base.x + frame *sprite.rotated_size.x
+	        + sprite->size.x*sprite->count*angle_index;
+	rect->y = sprite->base.y + action*sprite.rotated_size.y;
+	rect->w = sprite->rotated_size.x;
+	rect->h = sprite->rotated_size.y;
+}
+
+void gen_rotated(Sprite *sprite)
+{
+	frame = SDL_CreateRGBSurface(SDL_SWSURFACE, 
+			sprite->size.x, sprite->size.y, 32,
+			rmask, gmask, bmask, amask);
+
+	rotozoomSurfaceSize(
+		sprite->size.x,
+		sprite->size.y,
+		45, // to maximize size
+		1,  // no zoom
+		&sprite->rotated_size.x,
+		&sprite->rotated_size.y
+	);
+
+	for(int frame=0; frame<sprite->count; frame++) {
+		for(int action=0; action<ACTION_COUNT; action++) {
+			SDL_Rect src;
+			sprite_origin_rect(sprite, action, frame, &src);
+			for(int angle=0; angle<360; angle+=angle_step) {
+				SDL_Rect dst;
+				sprite_rotated_rect(sprite, action, frame, angle, &dst);
+				SDL_BlitSurface( sprite, &src, frame, NULL );
+				SDL_Surface *rotozoom = rotozoomSurface(frame, angle, 1, SMOOTHING_ON);
+				SDL_BlitSurface(player_rotozoom, NULL, screen, &dst );
+				SDL_FreeSurface(player_rotozoom);
+			}
+		}
+	}
+}
+>>>>>>> 63ad9eb43721b9407133463879204f63520cae08
 
 int main( int argc, char* args[] )
 {
-    SDL_Surface* screen = NULL;
-    SDL_Surface* sprite = NULL;
-    SDL_Surface* icon = NULL;
+	SDL_Surface* screen = NULL;
+	SDL_Surface* sprite = NULL;
+	SDL_Surface* icon = NULL;
 	SDL_Surface *player_frame = NULL;
 
 	// init
-	int sprite_width = 130;
-	int sprite_height = 130;
-	int sprite_bx = 520+10/*center*/;
-	int sprite_by = 650-16/*center*/;
-
 	SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
-	sprite = IMG_Load_RW( SDL_RWFromMem(sprite_jpg, sprite_jpg_len), 1 );
-	player_frame = SDL_CreateRGBSurface(SDL_SWSURFACE, sprite_width, sprite_height, 32,
-				rmask, gmask, bmask, amask);
+
+	Sprite zombie;
+	zombie.origin.x = 520 +10/*center*/;
+	zombie.origin.y = 650 -16/*center*/;
+	zombie.size.x = 130;
+	zombie.size.y = 130;
+	zombie.source = IMG_Load_RW( SDL_RWFromMem(sprite_jpg, sprite_jpg_len), 1 );
 
 	// window manager
 	{
@@ -72,6 +142,7 @@ int main( int argc, char* args[] )
 	screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
 	// player setup
+
 	int x=0, y=0;
 	int frame=0, step=0;
 	int speed=8;
@@ -89,20 +160,20 @@ int main( int argc, char* args[] )
 		if( SDL_PollEvent( &event ) )
 		{
 			switch(event.type) {
-			case SDL_QUIT:
-				running=0;
-			break;
-			case SDL_KEYDOWN:
-				switch(event.key.keysym.sym) {
-				case SDLK_ESCAPE:
-				case SDLK_q:
-					running = 0;
-				break;
-				}
-			//nobreak, slip...
-			case SDL_KEYUP:
-				pressed[event.key.keysym.sym] = event.type == SDL_KEYDOWN;
-			break;
+				case SDL_QUIT:
+					running=0;
+					break;
+				case SDL_KEYDOWN:
+					switch(event.key.keysym.sym) {
+						case SDLK_ESCAPE:
+						case SDLK_q:
+							running = 0;
+							break;
+					}
+					//nobreak, slip...
+				case SDL_KEYUP:
+					pressed[event.key.keysym.sym] = event.type == SDL_KEYDOWN;
+					break;
 			}
 		}
 
@@ -153,9 +224,9 @@ int main( int argc, char* args[] )
 		SDL_Delay(delay);
 	}
 
-    SDL_FreeSurface( sprite );
+	SDL_FreeSurface( sprite );
 
-    SDL_Quit();
+	SDL_Quit();
 
-    return 0;
+	return 0;
 }
