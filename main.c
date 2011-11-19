@@ -172,6 +172,9 @@ int main( int argc, char* args[] )
 		if( SDL_PollEvent( &event ) )
 		{
 			switch(event.type) {
+                  Mix_FreeMusic(}
+                  music = NULL;
+                }
 				case SDL_QUIT:
 					running=0;
 					break;

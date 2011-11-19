@@ -16,6 +16,9 @@ sprite.o: sprite.c
 main.o: main.c
 	gcc $< `sdl-config --cflags` -c -o $@
 
-inferno: main.o sprite.o
-	gcc $^ -lSDL_gfx -lSDL_image `sdl-config --libs` -o $@
+sound.o: sound.c
+	gcc $< `sdl-config --cflags` -c -o $@
+
+inferno: main.o sprite.o sound.o
+	gcc $^ -lSDL_gfx -lSDL_image -lSDL_mixer `sdl-config --libs` -o $@
 

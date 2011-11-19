@@ -1,19 +1,9 @@
-#include <stdio.h>
+#import "sound.h"
 
-#include <SDL.h>
-#include <SDL_mixer.h>
-
-typedef struct{ 
-    int rate;
-    Uint16 format; /* 16-bit stereo */
-    int channels;
-    int buffers;
-} IAudio;
+Mix_Music *music = NULL;
+IAudio a; 
 
 void initMusic() { 
-
-    IAudio a; 
-
     a.rate = 22050;
     a.format = AUDIO_S16; /* 16-bit stereo */
     a.channels = 2;
@@ -27,6 +17,22 @@ void initMusic() {
     Mix_QuerySpec(&a.rate, &a.format, &a.channels);
 }
 
-int main() { 
+void handleMusic() { 
+    if(music == NULL) {
+        initMusic();
+        music = Mix_LoadMUS("music.ogg");
+        Mix_PlayMusic(music, 0);
+        Mix_HookMusicFinished(doneMusic);
+
+    } else {
+        Mix_HaltMusic();
+        Mix_FreeMusic(music);
+        music = NULL;
+    }
 }
 
+void doneMusic() {
+  Mix_HaltMusic();
+  Mix_FreeMusic(music);
+  music = NULL;
+}
