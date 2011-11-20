@@ -34,6 +34,9 @@ adler.ttf: ~/Dropbox/inferno/adler.ttf
 %.c : %.ttf
 	xxd -i $< > $@
 
+%.o : %.c
+	gcc $(CFLAGS) $< -c -o $@
+
 sprite.png: ~/Dropbox/inferno/inferno_zombie_1.png 
 	convert $< $@
 
