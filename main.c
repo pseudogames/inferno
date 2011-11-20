@@ -97,15 +97,15 @@ void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect
 }
 
 #define ANGLE_STEP 45
-#define ZOOM .8
+#define ZOOM 1
 
 void sprite_rotated_rect(Sprite *sprite, Action action, int frame, int angle, SDL_Rect *rect)
 {
     frame = frame % sprite->count;
     int angle_index = ((int)(360+angle+ANGLE_STEP/2) % 360) / ANGLE_STEP;
-    rect->x = frame *sprite->rotated_frame_size.x
-        + sprite->rotated_frame_size.x*sprite->count*angle_index;
-    rect->y = action*sprite->rotated_frame_size.y;
+    rect->x = frame *sprite->rotated_frame_size.x;
+    rect->y = action*sprite->rotated_frame_size.y+
+        + sprite->rotated_frame_size.y*ACTION_COUNT*angle_index;
     rect->w = sprite->rotated_frame_size.x;
     rect->h = sprite->rotated_frame_size.y;
 }
@@ -125,8 +125,8 @@ void sprite_gen_rotation(Sprite *sprite)
         SDL_FreeSurface(sprite->rotated);
 
     sprite->rotated = SDL_CreateRGBSurface(SDL_SWSURFACE | SDL_SRCALPHA, 
-            sprite->rotated_frame_size.x * sprite->count * 360/ANGLE_STEP,
-            sprite->rotated_frame_size.y * ACTION_COUNT,
+            sprite->rotated_frame_size.x * sprite->count,
+            sprite->rotated_frame_size.y * ACTION_COUNT * 360/ANGLE_STEP,
             32, 0,0,0,0);
     if(sprite->rotated == NULL) {
         fprintf(stderr, "CreateRGBSurface failed: %s\n", SDL_GetError());
