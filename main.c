@@ -495,6 +495,10 @@ void hud_draw(Game *game, SDL_Surface *screen ){
     char timer[40];
     hud_timer(game, &timer[0]);
     text_write_raw(screen, 300, 10, timer, white, 45);
+
+    char body_count[10];
+    sprintf(body_count, "%d", game->body_count);
+    text_write_raw(screen, 900, 10, body_count, white, 18);
 }
 
 void fire_shot(Game *game, Body *launcher)
@@ -651,6 +655,8 @@ State game_render(Game *game, SDL_Surface *screen)
 			body[n]->action = ACTION_DEATH;
 			body[n]->frame = 0;
 			body[n]->angle = 0;
+            if (body[n]->health <= 0)
+                game->body_count++;
 		} else {
 			int attack_dist = 
 				(body[n]->sprite->rotated_frame_size.x+
@@ -862,6 +868,7 @@ int main( int argc, char* args[] )
     SDL_FreeSurface(tmp_bg);
 
 	app.game.heatmap = 0;
+	app.game.body_count = 0;
 
 	app.game.hitmap_dec = 24;
 	app.game.hitmap_w = app.screen->w/app.game.hitmap_dec;
