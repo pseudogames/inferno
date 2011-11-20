@@ -805,6 +805,26 @@ int toggle_fullscreen(int fullscreen) {
 
 int main( int argc, char* args[] )
 {
+	// keyboard conf
+	FILE *fp = fopen("inferno.ini", "r");
+	if(fp) {
+		fscanf(fp,"key_start=%d\n", &key_start);
+		fscanf(fp,"key_fire=%d\n", &key_fire);
+		fscanf(fp,"key_right=%d\n", &key_right);
+		fscanf(fp,"key_left=%d\n", &key_left);
+		fscanf(fp,"key_down=%d\n", &key_down);
+		fscanf(fp,"key_up=%d\n", &key_up);
+
+		printf("key_start=%d\n", key_start);
+		printf("key_fire=%d\n", key_fire);
+		printf("key_right=%d\n", key_right);
+		printf("key_left=%d\n", key_left);
+		printf("key_down=%d\n", key_down);
+		printf("key_up=%d\n", key_up);
+		fclose(fp);
+	}
+
+
 
     App app; 
 
