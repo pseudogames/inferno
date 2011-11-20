@@ -105,6 +105,9 @@ typedef struct{
 } App;
 
 
+SDL_Color red = {0xFF, 0X00, 0x00};
+SDL_Color white = {0xFF, 0XFF, 0xFF};
+
 void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect)
 {
     frame = frame % sprite->frame_count;
@@ -413,7 +416,7 @@ void menu_render(Menu *menu, SDL_Surface *screen)
     SDL_Rect src = {x, y, screen->w, screen->h};
     SDL_BlitSurface( menu->background, &src, screen, NULL );
 
-    text_write(screen, 300, 100, "INFERNO", 0);
+    text_write_raw(screen, 300, 100, "INFERNO", red, 96);
     text_write(screen, 100, 250, "new game", menu->selected ^ 0);
     text_write(screen, 100, 350, "continue game", menu->selected ^ 1);
     text_write(screen, 100, 450, "credits", menu->selected ^ 2);
@@ -430,11 +433,21 @@ void credit_render(Credit *credit, SDL_Surface *screen)
     SDL_Rect src = {x, y, screen->w, screen->h};
     SDL_BlitSurface( credit->background, &src, screen, NULL );
 
-    text_write(screen, 300, 100, "Credits", 0);
-    text_write(screen, 100, 250, "new game", 0);
-    text_write(screen, 100, 350, "continue game", 1);
-    text_write(screen, 100, 450, "credits", 2);
-    text_write(screen, 100, 550, "exit", 3);
+    text_write_raw(screen, 300, 100, "CREDITS", red, 96);
+    text_write_raw(screen, 200, 250, "programming", red, 36);
+        text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);
+        text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);
+
+    text_write_raw(screen, 200, 400, "art", red, 36);
+        text_write_raw(screen, 200, 450, "Cristine Ronchi", white, 26);
+
+    text_write_raw(screen, 200, 500, "music", red, 36);
+        text_write_raw(screen, 200, 550, "the DARK WOODS of FANTASY (C)1994 D.Barber. ", white, 16);
+        text_write_raw(screen, 200, 570, "the fORESt RiveR (C)1994 D.Barber. ", white, 16);
+        text_write_raw(screen, 200, 590, "spacewalk (c)1996 CB/Analogue ", white, 16);
+        text_write_raw(screen, 200, 610, "effects by AKAI & Roland phanton soundengine", white, 16);
+    /*text_write_raw(screen, 200, 550, "textures", red, 36);*/
+
 }
 
 void timing_control(Uint32 start) { 
