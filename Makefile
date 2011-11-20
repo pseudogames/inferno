@@ -3,7 +3,7 @@ CFLAGS=-g
 all: inferno music.ogg
 
 clean:
-	rm -fv inferno inferno.exe sprite.png sprite.c main.o sprite.o sound.o
+	rm -fv inferno inferno.exe sprite.png sprite.c main.o sprite.o sound.o font.o
 
 sprite.png: ~/Dropbox/inferno/inferno_zombie_1.png 
 	convert $< $@
