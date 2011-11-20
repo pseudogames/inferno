@@ -12,3 +12,5 @@ void handleMusinc();
 void doneMusic();
 void loadEffects();
 void playPunch();
+void play_menu_select();
+void play_menu_confirm();

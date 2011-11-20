@@ -4,5 +4,7 @@
 *.bmp
 *.ogg
 *.wav
+*.ttf
+
 sprite.c
 inferno
