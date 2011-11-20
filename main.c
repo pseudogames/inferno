@@ -2,13 +2,14 @@
 #include <SDL_image.h>
 #include <SDL_rotozoom.h>
 #include <strings.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 
 #include "sound.h"
 
 #define FPS 9
-#define MAX_ENEMIES 33
+#define MAX_ENEMIES 333
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
@@ -304,19 +305,28 @@ void game_render(Game *game, SDL_Surface *screen)
     if(fabs(dx)>0.1||fabs(dy)>0.1) {
         int angle = (int)(720+atan2(-dy,dx)*180/M_PI)%360;
         body_move(&game->player, angle);
-        for(i=0;i<MAX_ENEMIES;i++) {
-            body_move(&game->enemy[i], angle+rand()%10);
-        }
+
+		// enemy move
+		for(i=0;i<MAX_ENEMIES;i++) {
+			body_move(&game->enemy[i], angle+rand()%10);
+		}
     }
 
 
-    // clean game.screen
-    SDL_FillRect(screen,NULL, 0);
+	// render
+#if 0
+	int ysort[1+MAX_ENEMIES];
+    for(i=0;i<MAX_ENEMIES;i++) {
+		ysort[i] = &enemy[i];
+	}
+	ysort[MAX_ENEMIES] = &player;
+	
+	qsort
+#endif
 
     for(i=0;i<MAX_ENEMIES;i++) {
         body_draw(&game->enemy[i], screen);
     }
-
     body_draw(&game->player, screen);
 }
 
@@ -366,7 +376,7 @@ int main( int argc, char* args[] )
     // effects manager 
     loadEffects();
 
-    app.screen = SDL_SetVideoMode( 1024, 768, 24, SDL_SWSURFACE );
+    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
     // player setup
     sprite_init(&app.game.zombie, 
