@@ -9,16 +9,19 @@
 #include "sound.h"
 #include "font.h"
 
-#define FPS 25
-#define MAX_ENEMIES 3
+#define FPS 18
+#define MAX_ENEMIES 666
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
+#define ATAN2(dx,dy) ((int)(720+atan2(-(dy),(dx))*180/M_PI)%360)
 
 #define RGBA_FORMAT 32,0x00ff0000,0x0000ff00,0x000000ff,0xff000000
 #define RGB_FORMAT  24,0x00ff0000,0x0000ff00,0x000000ff,0x00000000
 
-extern unsigned char sprite_png[];
-extern unsigned int sprite_png_len;
+extern unsigned char hero_png[];
+extern unsigned int hero_png_len;
+extern unsigned char zombie_png[];
+extern unsigned int zombie_png_len;
 
 extern unsigned char mapa_jpg[];
 extern unsigned int mapa_jpg_len;
@@ -52,7 +55,7 @@ typedef enum {
 typedef struct {
     point origin;
     point frame_size;
-    int count;
+    int frame_count;
     SDL_Surface *source;
     point rotated_frame_size;
     SDL_Surface *rotated;
@@ -73,8 +76,10 @@ typedef struct {
 
 typedef struct{
     Sprite zombie;
+    Sprite hero;
     Body player;
     Body enemy[MAX_ENEMIES];
+	int enemy_count;
     int pressed[SDLK_LAST];
     SDL_Surface *background;
 } Game;
@@ -101,7 +106,7 @@ typedef struct{
 
 void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect)
 {
-    frame = frame % sprite->count;
+    frame = frame % sprite->frame_count;
     rect->x = sprite->origin.x + frame *sprite->frame_size.x;
     rect->y = sprite->origin.y + action*sprite->frame_size.y;
     rect->w = sprite->frame_size.x;
@@ -113,7 +118,7 @@ void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect
 
 void sprite_rotated_rect(Sprite *sprite, Action action, int frame, int angle, SDL_Rect *rect)
 {
-    frame = frame % sprite->count;
+    frame = frame % sprite->frame_count;
     int angle_index = ((int)(360+angle+ANGLE_STEP/2) % 360) / ANGLE_STEP;
     rect->x = frame *sprite->rotated_frame_size.x;
     rect->y = action*sprite->rotated_frame_size.y+
@@ -136,8 +141,8 @@ void sprite_gen_rotation(Sprite *sprite)
     if(sprite->rotated)
         SDL_FreeSurface(sprite->rotated);
 
-    sprite->rotated = SDL_CreateRGBSurface(SDL_SWSURFACE, 
-            sprite->rotated_frame_size.x * sprite->count,
+    sprite->rotated = SDL_CreateRGBSurface(SDL_HWSURFACE, 
+            sprite->rotated_frame_size.x * sprite->frame_count,
             sprite->rotated_frame_size.y * ACTION_COUNT * 360/ANGLE_STEP,
             RGBA_FORMAT);
     if(sprite->rotated == NULL) {
@@ -146,7 +151,7 @@ void sprite_gen_rotation(Sprite *sprite)
     }
     printf("cache size %dx%d for %d angles\n", sprite->rotated->w, sprite->rotated->h, 360/ANGLE_STEP);
 
-    SDL_Surface *element = SDL_CreateRGBSurface(SDL_SWSURFACE, 
+    SDL_Surface *element = SDL_CreateRGBSurface(SDL_HWSURFACE, 
             sprite->frame_size.x, 
             sprite->frame_size.y,
             RGBA_FORMAT);
@@ -157,7 +162,7 @@ void sprite_gen_rotation(Sprite *sprite)
 
     int frame, action, angle;
     for(action=0; action<ACTION_COUNT; action++) {
-        for(frame=0; frame<sprite->count; frame++) {
+        for(frame=0; frame<sprite->frame_count; frame++) {
             SDL_Rect src;
             sprite_origin_rect(sprite, action, frame, &src);
             for(angle=0; angle<360; angle+=ANGLE_STEP) {
@@ -186,7 +191,7 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
     sprite->origin.y = oy;
     sprite->frame_size.x = fx;
     sprite->frame_size.y = fy;
-    sprite->count = c;
+    sprite->frame_count = c;
     sprite->source = IMG_Load_RW( SDL_RWFromMem(img, img_size), 1 );
     sprite->rotated = NULL;
     sprite_gen_rotation(sprite);
@@ -194,26 +199,17 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
 
 
 
-void body_init(Body *body, Sprite *sprite, int max_health, float max_vel, int x, int y)
-{
-    memset(body,0,sizeof(Body));
-    body->health = body->max_health = max_health;
-    body->max_vel = max_vel;
-    body->sprite = sprite;
-    body->pos.x = x;
-    body->pos.y = y;
-}
-
 void body_move(Body *body, int angle)
 {
     float f = .2, k = .8;
-    body->angle = (int)(720 + body->angle * (1-f) + angle * f) % 720;
-    //float a = ((int)(720 + body->angle * (1-k) + angle * k) % 720) * M_PI / 180;
+    if(fabs(body->angle - angle) > 180) {
+		angle += 360;
+	}
+	body->angle = (int)(720 + body->angle * (1-f) + angle * f) % 720;
     float a = body->angle * M_PI / 180;
-    // FIXME virando para lado contrario quando tem que cruzar a borda entre 0 e 360
-    body->frame = (body->frame+1) % body->sprite->count;
     body->pos.x += cos(a) * body->max_vel;
     body->pos.y -= sin(a) * body->max_vel;
+    body->frame = (body->frame+(rand()%2)) % body->sprite->frame_count;
 
     // TODO collision
 }
@@ -314,19 +310,27 @@ int ysort_cmp(const void *a, const void *b)
 void game_render(Game *game, SDL_Surface *screen)
 {
     // move player
-    int i,x,y;
+    int i,n,x,y;
+
+	if(game->enemy_count <= MAX_ENEMIES && (rand()%FPS) == 0)
+		game->enemy_count ++;
 
     float dx=game->pressed[SDLK_RIGHT]-game->pressed[SDLK_LEFT];
     float dy=game->pressed[SDLK_DOWN]-game->pressed[SDLK_UP];
     if(fabs(dx)>0.1||fabs(dy)>0.1) {
-        int angle = (int)(720+atan2(-dy,dx)*180/M_PI)%360;
+        int angle = ATAN2(dx,dy);
         body_move(&game->player, angle);
 
-        // enemy move
-        for(i=0;i<MAX_ENEMIES;i++) {
-            body_move(&game->enemy[i], angle+rand()%10);
-        }
     }
+
+	// enemy move
+	for(i=0; i < game->enemy_count; i++) {
+		int angle = ATAN2(
+			game->player.pos.x-game->enemy[i].pos.x,
+			game->player.pos.y-game->enemy[i].pos.y
+		);
+		body_move(&game->enemy[i], angle+(rand()%60)-30);
+	}
 
     // CAMERA 
 	printf("========\n");
@@ -369,15 +373,32 @@ void game_render(Game *game, SDL_Surface *screen)
 	}
 
 	// BODIES
-	Body *ysort[1+MAX_ENEMIES];
-    for(i=0;i<MAX_ENEMIES;i++) {
-		ysort[i] = &game->enemy[i];
-	}
-	ysort[i++] = &game->player;
-	qsort(ysort, sizeof(ysort)/sizeof(ysort[0]), sizeof(ysort[0]), ysort_cmp);
+	Body *body[1+MAX_ENEMIES];
+	n=0;
+	body[n++] = &game->player;
+    for(i=0; i < game->enemy_count; i++,n++) {
+		body[n] = &game->enemy[i];
 
-    for(i=0;i<1+MAX_ENEMIES;i++) {
-        body_draw(game, ysort[i], screen);
+		if(body[n]->action == ACTION_DEATH) {
+			if(++body[n]->frame >= body[n]->sprite->frame_count) {
+				body[n]->action = ACTION_MOVE;
+				body[n]->health = body[n]->max_health;
+				float a = (rand()%180)/M_PI;
+				int r = MAX(screen->w,screen->h);
+				body[n]->pos.x = game->player.pos.x + cos(a) * r;
+				body[n]->pos.y = game->player.pos.y + sin(a) * r;
+				printf("%d %d\n",body[n]->pos.x, body[n]->pos.y);
+			}
+		} else if(body[n]->health <= 0) {
+			body[n]->action = ACTION_DEATH;
+			body[n]->frame = 0;
+		}
+
+	}
+	qsort(body, n, sizeof(body[0]), ysort_cmp); // blend ordering
+
+    for(i=0;i<n;i++) {
+        body_draw(game, body[i], screen);
     }
 }
 
@@ -423,7 +444,7 @@ int main( int argc, char* args[] )
 
 #if 0
     { // window manager
-        SDL_Surface* icon = SDL_CreateRGBSurface(SDL_SWSURFACE, 64, 64, RGB_FORMAT);
+        SDL_Surface* icon = SDL_CreateRGBSurface(SDL_HWSURFACE, 64, 64, RGB_FORMAT);
         SDL_Rect src = {32,32,64,64};
         SDL_Rect dst = {0,0,0,0};
         SDL_BlitSurface( sprite, &src, icon, &dst );
@@ -452,34 +473,40 @@ int main( int argc, char* args[] )
 
     SDL_FreeSurface(tmp_bg);
 
-    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
+    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE );
 
     // player setup
+    sprite_init(&app.game.hero, 
+            0, 0, // origin
+            114, 114, 13, // frame size and count
+            hero_png, hero_png_len // source
+            );
     sprite_init(&app.game.zombie, 
             0, 0, // origin
             114, 114, 13, // frame size and count
-            sprite_png, sprite_png_len // source
+            zombie_png, zombie_png_len // source
             );
 
-    body_init(&app.game.player, &app.game.zombie,
-            100, // health
-            10, // speed
-            app.screen->w/2-app.game.zombie.frame_size.x/2,
-            app.screen->h/2-app.game.zombie.frame_size.y/2
-            );
+	app.game.player.sprite = &app.game.hero;
+	app.game.player.max_vel = 10;
+	app.game.player.health = 
+	app.game.player.max_health = 100;
+	app.game.player.action = ACTION_MOVE;
+	app.game.player.frame = 0;
+	app.game.player.pos.y = 
+	app.game.player.pos.x = 0;
 
     int i;
     for(i=0;i<MAX_ENEMIES;i++) {
-        body_init(
-                &app.game.enemy[i],
-                &app.game.zombie,
-                25, // health
-                7, // speed
-                rand() % app.screen->w, // x
-                rand() % app.screen->h // y
-                );
+		app.game.enemy[i].sprite = &app.game.zombie;
+		app.game.enemy[i].max_health = 25;
+		app.game.enemy[i].max_vel = 5;
+		app.game.enemy[i].health = 0;
+		app.game.enemy[i].action = ACTION_DEATH;
+		app.game.enemy[i].frame = 0;
     }
 
+	app.game.enemy_count = 0;
     memset(app.game.pressed, 0, sizeof(app.game.pressed));
     app.state = STATE_MENU;
     app.menu.selected = 0; 
