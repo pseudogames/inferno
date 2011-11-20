@@ -17,5 +17,5 @@ void play_menu_confirm();
 
 void handle_ingame_music();
 void handle_menu_music();
-
+void handle_credit_music();
 void halt_music();

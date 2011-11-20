@@ -99,6 +99,7 @@ typedef struct{
 
 typedef struct{
     SDL_Surface *image; 
+    SDL_Surface *background;
 } Credit;
 
 typedef struct{
@@ -110,6 +111,9 @@ typedef struct{
     SDL_Surface *background;
 } App;
 
+
+SDL_Color red = {0xFF, 0X00, 0x00};
+SDL_Color white = {0xFF, 0XFF, 0xFF};
 
 void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect)
 {
@@ -485,7 +489,7 @@ void menu_render(Menu *menu, SDL_Surface *screen)
     SDL_Rect src = {x, y, screen->w, screen->h};
     SDL_BlitSurface( menu->background, &src, screen, NULL );
 
-    text_write(screen, 300, 50, "INFERNO", 0);
+    text_write_raw(screen, 300, 100, "INFERNO", red, 96);
     text_write(screen, 100, 250, "new game", menu->selected ^ 0);
     text_write(screen, 100, 350, "continue game", menu->selected ^ 1);
     text_write(screen, 100, 450, "credits", menu->selected ^ 2);
@@ -494,7 +498,29 @@ void menu_render(Menu *menu, SDL_Surface *screen)
 
 void credit_render(Credit *credit, SDL_Surface *screen)
 {
-    // TODO
+    Uint32 ticks = SDL_GetTicks();
+
+    int x = (1+cos(ticks/15000.0))*(credit->background->w/2-screen->w/2);
+    int y = (1+sin(ticks/15000.0))*(credit->background->h/2-screen->h/2);
+
+    SDL_Rect src = {x, y, screen->w, screen->h};
+    SDL_BlitSurface( credit->background, &src, screen, NULL );
+
+    text_write_raw(screen, 300, 100, "CREDITS", red, 96);
+    text_write_raw(screen, 200, 250, "programming", red, 36);
+        text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);
+        text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);
+
+    text_write_raw(screen, 200, 400, "art", red, 36);
+        text_write_raw(screen, 200, 450, "Cristine Ronchi", white, 26);
+
+    text_write_raw(screen, 200, 500, "music", red, 36);
+        text_write_raw(screen, 200, 550, "the DARK WOODS of FANTASY (C)1994 D.Barber. ", white, 16);
+        text_write_raw(screen, 200, 570, "the fORESt RiveR (C)1994 D.Barber. ", white, 16);
+        text_write_raw(screen, 200, 590, "spacewalk (c)1996 CB/Analogue ", white, 16);
+        text_write_raw(screen, 200, 610, "effects by AKAI & Roland phanton soundengine", white, 16);
+    /*text_write_raw(screen, 200, 550, "textures", red, 36);*/
+
 }
 
 void timing_control(Uint32 start) { 
@@ -544,6 +570,8 @@ int main( int argc, char* args[] )
     app.background = zoomSurface(tmp_bg, 2, 2, 1);
     app.menu.background = app.background;
     app.game.background = app.background;
+    app.credit.background = app.background;
+
     SDL_FreeSurface(tmp_bg);
 
 
@@ -631,10 +659,16 @@ int main( int argc, char* args[] )
                 if(last_state != STATE_MENU){
                     halt_music();
                     handle_menu_music(); 
-                break;
                 }
+                break;
 
-            case STATE_CREDIT: credit_render(&app.credit, app.screen); break;
+            case STATE_CREDIT: 
+                credit_render(&app.credit, app.screen); 
+                if(last_state != STATE_CREDIT){
+                    halt_music();
+                    handle_credit_music(); 
+                }
+                break;
         }
         SDL_Flip( app.screen );
         timing_control(start);
