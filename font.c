@@ -21,8 +21,17 @@ TTF_Font *setup_ttf_adler(int points){
     return ttf_tmp;
 }
 
-void text_write(SDL_Surface *screen, int x, int y, char *message, int selected){ 
+TTF_Font *setup_ttf_acid(int points){
+    TTF_Font *ttf_tmp = TTF_OpenFontRW(SDL_RWFromMem(acid_ttf, acid_ttf_len), 1, points);
 
+    int renderstyle = TTF_STYLE_NORMAL;
+    int outline = 0;
+    int kerning       = 1;
+
+    TTF_SetFontStyle(ttf_tmp, renderstyle);
+    return ttf_tmp;
+}
+void text_write(SDL_Surface *screen, int x, int y, char *message, int selected){ 
 
     SDL_Color color;
     SDL_Color red = {0xFF, 0X00, 0x00};
@@ -35,8 +44,9 @@ void text_write(SDL_Surface *screen, int x, int y, char *message, int selected){
 }
 
 void text_write_raw(SDL_Surface *screen, int x, int y, char *message, SDL_Color color, int points) {
-    TTF_Font *tmp = setup_ttf_adler(points); 
+    TTF_Font *tmp;
 
+    tmp = setup_ttf_adler(points); 
     SDL_Rect dstrect;
     SDL_Surface *text;
     
