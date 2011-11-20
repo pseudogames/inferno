@@ -399,6 +399,8 @@ void hud_setup(Game *game, SDL_Surface *screen){
 }
 
 void hud_draw(Game *game, SDL_Surface *screen ){
+    SDL_Rect src = {45, 15, game->player.health * 2, 15};
+    SDL_FillRect(screen, &src, 0x0000ffff);
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 }
 
