@@ -8,3 +8,16 @@
 sprite.c
 inferno
 stdout.txt
+*.wav
+*.ttf
+acid.c
+adler.c
+m60.c
+pick.c
+punch0.c
+punch1.c
+punch2.c
+punch3.c
+punch4.c
+shot.c
+

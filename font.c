@@ -1,10 +1,15 @@
 #include "font.h"
 
+extern unsigned char adler_ttf[];
+extern unsigned int adler_ttf_len;
+extern unsigned char acid_ttf[];
+extern unsigned int acid_ttf_len;
+
 void init_font() { 
 
     TTF_Init();
 
-    font = TTF_OpenFont("./font/adler.ttf", 72);
+	font = TTF_OpenFontRW(SDL_RWFromMem(adler_ttf, adler_ttf_len), 1, 72);
 
     int renderstyle = TTF_STYLE_NORMAL;
     int outline = 0;

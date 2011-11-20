@@ -9,21 +9,36 @@ Mix_Chunk *menu_select_ptr;
 
 IAudio a; 
 
+extern unsigned char punch0_wav[];
+extern unsigned int punch0_wav_len;
+extern unsigned char punch1_wav[];
+extern unsigned int punch1_wav_len;
+extern unsigned char punch2_wav[];
+extern unsigned int punch2_wav_len;
+extern unsigned char punch3_wav[];
+extern unsigned int punch3_wav_len;
+extern unsigned char punch4_wav[];
+extern unsigned int punch4_wav_len;
+extern unsigned char pick_wav[];
+extern unsigned int pick_wav_len;
+extern unsigned char shot_wav[];
+extern unsigned int shot_wav_len;
+extern unsigned char m60_wav[];
+extern unsigned int m60_wav_len;
+
 int punchChannel, shotChannel, pickChannel  = -1;
 
-char punch[50];
-
 void loadEffects(){
-    int i;
-    for (i = 0; i < 5; i++) {
-        sprintf(punch, "./audio/punch/punch%d.wav", i);
-        punchptr[i] = Mix_LoadWAV(punch);
-    }
+	punchptr[0] = Mix_LoadWAV_RW(SDL_RWFromMem(punch0_wav, punch0_wav_len), 1 );
+	punchptr[1] = Mix_LoadWAV_RW(SDL_RWFromMem(punch1_wav, punch1_wav_len), 1 );
+	punchptr[2] = Mix_LoadWAV_RW(SDL_RWFromMem(punch2_wav, punch2_wav_len), 1 );
+	punchptr[3] = Mix_LoadWAV_RW(SDL_RWFromMem(punch3_wav, punch3_wav_len), 1 );
+	punchptr[4] = Mix_LoadWAV_RW(SDL_RWFromMem(punch4_wav, punch4_wav_len), 1 );
 
-    shotptr = Mix_LoadWAV("./audio/shot/m60.wav");
-    pickptr = Mix_LoadWAV("./audio/shot/pick.wav");
-    menu_select_ptr = Mix_LoadWAV("./audio/shot/pick.wav");
-    menu_confirm_ptr = Mix_LoadWAV("./audio/shot/shot.wav");
+	shotptr = Mix_LoadWAV_RW(SDL_RWFromMem(m60_wav, m60_wav_len), 1 );
+	pickptr = Mix_LoadWAV_RW(SDL_RWFromMem(pick_wav, pick_wav_len), 1 );
+	menu_select_ptr = Mix_LoadWAV_RW(SDL_RWFromMem(pick_wav, pick_wav_len), 1 );
+	menu_confirm_ptr = Mix_LoadWAV_RW(SDL_RWFromMem(shot_wav, shot_wav_len), 1 );
 }
 
 
