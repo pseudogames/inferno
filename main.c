@@ -56,6 +56,7 @@ typedef enum {
     STATE_GAME, 
     STATE_PAUSE,
     STATE_CREDIT,
+    STATE_GAMEOVER,
     STATE_QUIT
 } State; 
 
@@ -331,6 +332,19 @@ State credit_event(Credit *credit, SDL_Event *event) {
     return STATE_CREDIT;
 }
 
+State gameover_event(Credit *credit, SDL_Event *event) { 
+    switch(event->type) {
+        case SDL_KEYDOWN:
+            switch(event->key.keysym.sym) {
+                case SDLK_ESCAPE:
+                case SDLK_SPACE:
+                case SDLK_RETURN:
+                    return STATE_MENU;
+            }
+    }
+    return STATE_CREDIT;
+}
+
 State menu_event(Menu *menu, SDL_Event *event) { 
     switch(event->type) {
         case SDL_KEYDOWN:
@@ -404,7 +418,9 @@ void hud_setup(Game *game, SDL_Surface *screen){
 }
 
 void hud_draw(Game *game, SDL_Surface *screen ){
-    SDL_Rect src = {45, 15, game->player.health * 2, 15};
+    int health = (game->player.health < 0) ? 0 : game->player.health; 
+
+    SDL_Rect src = {45, 15, health * 2, 15};
     SDL_FillRect(screen, &src, 0x0000ffff);
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 
@@ -573,7 +589,7 @@ State game_render(Game *game, SDL_Surface *screen)
 			game->player.pos.x =
 			game->player.pos.y = 0;
 			memset(game->pressed,0,sizeof(game->pressed));
-			state = STATE_MENU;
+			state = STATE_GAMEOVER;
 		}
 	} else if(game->player.health <= 0) {
 		game->player.action = ACTION_DEATH;
@@ -626,6 +642,26 @@ void menu_render(Menu *menu, SDL_Surface *screen)
     text_write(screen, 100, 550, "exit", menu->selected ^ 3);
 }
 
+void gameover_render(Game *game, SDL_Surface *screen)
+{
+    /*game_render(game, screen);*/
+    SDL_BlitSurface( game->background, NULL, screen, NULL );
+    text_write_raw(screen, 165, 250, "GAME OVER", red, 120);
+    /*text_write_raw(screen, 200, 250, "programming", red, 36);*/
+        /*text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);*/
+        /*text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);*/
+
+    /*text_write_raw(screen, 200, 400, "art", red, 36);*/
+        /*text_write_raw(screen, 200, 450, "Cristine Ronchi", white, 26);*/
+
+    /*text_write_raw(screen, 200, 500, "music", red, 36);*/
+        /*text_write_raw(screen, 200, 550, "the DARK WOODS of FANTASY (C)1994 D.Barber. ", white, 16);*/
+        /*text_write_raw(screen, 200, 570, "the fORESt RiveR (C)1994 D.Barber. ", white, 16);*/
+        /*text_write_raw(screen, 200, 590, "spacewalk (c)1996 CB/Analogue ", white, 16);*/
+        /*text_write_raw(screen, 200, 610, "effects by AKAI & Roland phanton soundengine", white, 16);*/
+    /*[>text_write_raw(screen, 200, 550, "textures", red, 36);<]*/
+
+}
 void credit_render(Credit *credit, SDL_Surface *screen)
 {
     Uint32 ticks = SDL_GetTicks();
@@ -799,6 +835,7 @@ int main( int argc, char* args[] )
                 case STATE_GAME: app.state = game_event  (&app.game,   &event); break;
                 case STATE_MENU:   app.state = menu_event  (&app.menu,   &event); break;
                 case STATE_CREDIT: app.state = credit_event(&app.credit, &event); break;
+                case STATE_GAMEOVER: app.state = gameover_event(&app.credit, &event); break;
             }
 
             switch(event.type) {
@@ -814,7 +851,7 @@ int main( int argc, char* args[] )
                             app.game.heatmap ^= 1;
 							break;
                         case SDLK_f:
-                            fullscreen = toggle_fullscreen(fullscreen);
+                            /*fullscreen = toggle_fullscreen(fullscreen);*/
                             break;
                     }
             }
@@ -843,6 +880,13 @@ int main( int argc, char* args[] )
                 if(last_state != STATE_CREDIT){
                     halt_music();
                     handle_credit_music(); 
+                }
+                break;
+            case STATE_GAMEOVER: 
+                gameover_render(&app.game, app.screen); 
+                if(last_state != STATE_CREDIT){
+                    halt_music();
+                    /*handle_gameover_music(); */
                 }
                 break;
         }
