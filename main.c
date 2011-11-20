@@ -15,6 +15,9 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define ATAN2(dx,dy) ((int)(720+atan2(-(dy),(dx))*180/M_PI)%360)
 
+#define SCREEN_WIDTH 1024
+#define SCREEN_HEIGHT 768
+
 #define RGBA_FORMAT 32,0x00ff0000,0x0000ff00,0x000000ff,0xff000000
 #define RGB_FORMAT  24,0x00ff0000,0x0000ff00,0x000000ff,0x00000000
 
@@ -114,6 +117,8 @@ typedef struct{
 	int hitmap_len;
 	Uint8 *hitmap;
 	int heatmap;
+
+    Uint32 started; 
 } Game;
 
 typedef struct{
@@ -406,6 +411,20 @@ void hud_draw(Game *game, SDL_Surface *screen ){
     SDL_Rect hista_src = {45, 42, game->player.max_vel * 19 , 15};
     SDL_FillRect(screen, &hista_src, 0x00ff00ff);
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
+
+    Uint32 ticks = SDL_GetTicks();
+    Uint32 elapsed = ticks - game->started;
+
+    Uint32 miliseconds = elapsed % 1000;
+    Uint32 time = elapsed / 1000;
+    Uint32 seconds = time % 60;
+    Uint32 minutes = time % 3600 / 60;
+    Uint32 hours = time / 3600;
+
+    char timer[30];
+    sprintf(timer, "%02d:%02d:%02d::%d", hours, minutes, seconds, miliseconds );
+
+    text_write_raw(screen, 300, 10, timer, white, 45);
 }
 
 State game_render(Game *game, SDL_Surface *screen)
@@ -662,6 +681,17 @@ void load_screen(SDL_Surface *screen) {
     SDL_FreeSurface(tmp_bg);
 } 
 
+int toggle_fullscreen(int fullscreen) {
+
+    if(fullscreen) {
+        SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 0,  SDL_DOUBLEBUF | SDL_ANYFORMAT);
+    }
+    else {
+        SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 0, SDL_DOUBLEBUF | SDL_ANYFORMAT | SDL_FULLSCREEN);
+    }
+    fullscreen = !fullscreen;
+    return(fullscreen);
+}
 
 int main( int argc, char* args[] )
 {
@@ -753,6 +783,7 @@ int main( int argc, char* args[] )
     handle_menu_music();
     app.menu.selected = 0; 
     int last_state = 0;
+    int fullscreen = 0;
 
 
     hud_setup(&app.game, app.screen); 
@@ -782,6 +813,9 @@ int main( int argc, char* args[] )
                         case SDLK_h:
                             app.game.heatmap ^= 1;
 							break;
+                        case SDLK_f:
+                            fullscreen = toggle_fullscreen(fullscreen);
+                            break;
                     }
             }
         }
@@ -791,6 +825,7 @@ int main( int argc, char* args[] )
             case STATE_GAME:   
                 app.state = game_render  (&app.game,   app.screen); 
                 if(last_state != STATE_GAME){
+                    app.game.started = SDL_GetTicks();
                     halt_music();
                     handle_ingame_music(); 
                 }
