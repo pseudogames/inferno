@@ -83,6 +83,7 @@ typedef struct {
     point pos;
     vec vel;
     float max_vel;
+	float ang_vel;
     int angle; // degree
     int max_health;
     int health;
@@ -284,7 +285,7 @@ void body_move(Game *game, Body *body, int angle)
 			v *= .5;
 		}
 		if(high>0x90) {
-			body->health *= .90;
+			body->health -= high/16;
 			v *= .25;
 		}
 	}
@@ -292,7 +293,7 @@ void body_move(Game *game, Body *body, int angle)
     if(fabs(body->angle - angle) > 180) {
 		angle += 360;
 	}
-    float f = .2;
+    float f = body->ang_vel;
 	body->angle = (int)(720 + body->angle * (1-f) + angle * f) % 720;
     float a = body->angle * M_PI / 180;
     body->pos.x += cos(a) * v;
@@ -387,6 +388,7 @@ void game_init(Game *game)
 	memset(game->hitmap, 0, game->hitmap_len);
 
 	game->player.sprite = &game->hero;
+	game->player.ang_vel = .2;
 	game->player.max_vel = 10;
 	game->player.health = 
 	game->player.max_health = 100;
@@ -399,6 +401,7 @@ void game_init(Game *game)
     for(i=0;i<MAX_ENEMIES;i++) {
 		game->enemy[i].sprite = &game->zombie;
 		game->enemy[i].max_health = 25;
+		game->enemy[i].ang_vel = .05;
 		game->enemy[i].max_vel = 5;
 		game->enemy[i].health = 0;
 		game->enemy[i].action = ACTION_DEATH;
@@ -410,6 +413,7 @@ void game_init(Game *game)
 		game->fire[i].sprite = &game->fogo;
 		game->fire[i].health = 0;
 		game->fire[i].max_health = 1000;
+		game->fire[i].ang_vel = .1;
 		game->fire[i].max_vel = 30;
 		game->fire[i].action = ACTION_MOVE;
 		game->fire[i].frame = 9;
