@@ -26,6 +26,18 @@ extern unsigned int zombie_png_len;
 extern unsigned char mapa_jpg[];
 extern unsigned int mapa_jpg_len;
 
+extern unsigned char logo_pseudo_png[];
+extern unsigned int logo_pseudo_png_len;
+
+extern unsigned char creditos_jpg[];
+extern unsigned int creditos_jpg_len;
+
+extern unsigned char player_hud_png[];
+extern unsigned int player_hud_png_len;
+
+extern unsigned char stats_hud_png[];
+extern unsigned int stats_hud_png_len;
+
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
 
@@ -68,6 +80,9 @@ typedef struct {
     int angle; // degree
     int max_health;
     int health;
+    int fear; 
+    int stamina; 
+
     Action action;
     int frame;
     Sprite *sprite;
@@ -84,6 +99,15 @@ typedef struct{
 	int enemy_count;
     int pressed[SDLK_LAST];
     SDL_Surface *background;
+    
+    SDL_Surface *player_hud;
+
+    SDL_Surface *stats_hud;
+
+    int body_count; 
+    int ammo; 
+    int keys;
+
 	int hitmap_dec;
 	int hitmap_w;
 	int hitmap_h;
@@ -367,6 +391,14 @@ int ysort_cmp(const void *a, const void *b)
 	return (aa->pos.y > bb->pos.y) - (aa->pos.y < bb->pos.y);
 }
 
+void hud_setup(Game *game, SDL_Surface *screen){
+   game->player_hud = IMG_Load_RW( SDL_RWFromMem(player_hud_png, player_hud_png_len), 1 );
+}
+
+void hud_draw(Game *game, SDL_Surface *screen ){
+    SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
+}
+
 void game_render(Game *game, SDL_Surface *screen)
 {
     // move player
@@ -386,7 +418,7 @@ void game_render(Game *game, SDL_Surface *screen)
 	// enemy move
 	for(i=0; i < game->enemy_count; i++) {
 		int angle = ATAN2(
-			game->player.pos.x-game->enemy[i].pos.x,
+                game->player.pos.x-game->enemy[i].pos.x,
 			game->player.pos.y-game->enemy[i].pos.y
 		);
 		body_move(game, &game->enemy[i], angle+(rand()%60)-30);
@@ -477,6 +509,7 @@ void game_render(Game *game, SDL_Surface *screen)
     for(i=0;i<n;i++) {
         body_draw(game, body[i], screen);
     }
+    hud_draw(game, screen);
 }
 
 void menu_render(Menu *menu, SDL_Surface *screen)
@@ -532,6 +565,24 @@ void timing_control(Uint32 start) {
 }
 
 // global runing
+//
+
+
+void load_screen(SDL_Surface *screen) { 
+    SDL_Surface *tmp_bg = IMG_Load_RW( SDL_RWFromMem(logo_pseudo_png, logo_pseudo_png_len), 1 );
+    SDL_Rect src = {-350, -250, 1022, 768};
+    SDL_FillRect(screen, NULL, 0xFFFFFFFF);
+    SDL_BlitSurface( tmp_bg, &src, screen, NULL );
+    SDL_Flip(screen);
+    SDL_FreeSurface(tmp_bg);
+    SDL_Delay(1000);
+    tmp_bg = IMG_Load_RW( SDL_RWFromMem(creditos_jpg, creditos_jpg_len), 1 );
+    SDL_FillRect(screen, NULL, 0xFFFFFFFF);
+    SDL_BlitSurface( tmp_bg, NULL, screen, NULL );
+    SDL_Flip(screen);
+    SDL_Delay(1000);
+    SDL_FreeSurface(tmp_bg);
+} 
 
 
 int main( int argc, char* args[] )
@@ -565,6 +616,10 @@ int main( int argc, char* args[] )
     /*handle_menu_music();*/
     
     app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE );
+
+
+    load_screen(app.screen);
+
 
     SDL_Surface *tmp_bg = IMG_Load_RW( SDL_RWFromMem(mapa_jpg, mapa_jpg_len), 1 );
     app.background = zoomSurface(tmp_bg, 2, 2, 1);
@@ -620,6 +675,10 @@ int main( int argc, char* args[] )
     handle_menu_music();
     app.menu.selected = 0; 
     int last_state = 0;
+
+
+    hud_setup(&app.game, app.screen); 
+
     // main loop
 
     while(app.state != STATE_QUIT) {

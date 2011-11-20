@@ -69,6 +69,18 @@ music_credit.ogg: ~/Dropbox/inferno/music_credit.ogg
 mapa.jpg: ~/Dropbox/inferno/mapa.jpg
 	cp $< $@
 
+player_hud.png: ~/Dropbox/inferno/player_hud.png
+	cp $< $@
+
+stats_hud.png: ~/Dropbox/inferno/stats_hud.png
+	cp $< $@
+
+logo_pseudo.png: ~/Dropbox/inferno/logo_pseudo.png
+	cp $< $@
+
+creditos.jpg: ~/Dropbox/inferno/creditos.jpg
+	cp $< $@
+
 main.o: main.c
 	gcc $(CFLAGS) $< `sdl-config --cflags` -c -o $@
 
@@ -81,7 +93,7 @@ font.o: font.c
 acid.c: ~/Dropbox/inferno/acid.ttf
 adler.c: ~/Dropbox/inferno/adler.ttf
 
-inferno: main.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o adler.o acid.o mapa.o menu.o menu_select.o music_credit.o    music_ingame.o music_menu.o hero.o zombie.o
+inferno: main.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o adler.o acid.o mapa.o menu.o menu_select.o music_credit.o    music_ingame.o music_menu.o hero.o zombie.o logo_pseudo.o creditos.o  player_hud.o stats_hud.o 
 	gcc $(CFLAGS) $(LDFLAGS) $^ -lSDL_gfx -lSDL_image -lSDL_mixer -lSDL_ttf `sdl-config --libs` -o $@
 
 debug: inferno
