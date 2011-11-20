@@ -91,6 +91,7 @@ typedef struct {
 	int hitmap_in;
 } Body;
 
+#define MAX_FIRE 64
 typedef struct{
     Sprite zombie;
     Sprite hero;
@@ -99,6 +100,9 @@ typedef struct{
 	int enemy_count;
     int pressed[SDLK_LAST];
     SDL_Surface *background;
+
+    Body fire[MAX_FIRE];
+	int fire_next;
     
     SDL_Surface *player_hud;
 
@@ -368,7 +372,6 @@ State game_event(Game *game, SDL_Event *event) {
 
                 case SDLK_p:
                     playPunch();
-                    game->player.action = ACTION_ATTACK;
                     break;
 
                 case SDLK_s:
@@ -404,6 +407,21 @@ void hud_draw(Game *game, SDL_Surface *screen ){
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 }
 
+void fire_shot(Game *game, Body *launcher)
+{
+	Body *shot = &(game->fire[game->fire_next]);
+	launcher->frame = (launcher->frame + 1) % launcher->sprite->frame_count;
+	shot->action = ACTION_DEATH;
+	shot->frame = 9;
+	shot->pos.x = launcher->pos.x;
+	shot->pos.y = launcher->pos.y;
+	shot->angle = launcher->angle;
+	shot->pos.x += cos(shot->angle*M_PI/180) * shot->max_vel;
+	shot->pos.y -= sin(shot->angle*M_PI/180) * shot->max_vel;
+	shot->health = shot->max_health;
+	game->fire_next = (game->fire_next+1) % MAX_FIRE;
+}
+
 State game_render(Game *game, SDL_Surface *screen)
 {
 	State state = STATE_GAME;
@@ -420,6 +438,16 @@ State game_render(Game *game, SDL_Surface *screen)
         body_move(game, &game->player, angle);
 
     }
+
+	// player fire
+	if(game->player.action != ACTION_DEATH) {
+		if(game->pressed[SDLK_RETURN] || game->pressed[SDLK_SPACE]) {
+			game->player.action = ACTION_ATTACK;
+			fire_shot(game, &game->player);
+		} else {
+			game->player.action = ACTION_MOVE;
+		}
+	}
 
 	// enemy move
 	for(i=0; i < game->enemy_count; i++) {
@@ -491,15 +519,28 @@ State game_render(Game *game, SDL_Surface *screen)
 			if(v<64) v = 0;
 			game->hitmap[x+y*game->hitmap_w] = v;
 		}
-		//printf("\n");
 	}
 	
     //SDL_UnlockSurface( screen );
 
 	// BODIES
-	Body *body[1+MAX_ENEMIES];
+	Body *body[1+MAX_ENEMIES+MAX_FIRE];
 	n=0;
 	body[n++] = &game->player;
+    for(i=0; i < MAX_FIRE; i++) {
+		if(game->fire[i].health>0) {
+			body[n++] = &game->fire[i];
+
+			printf("%d) %d [%d, %d]\n", i, game->fire[i].health, game->fire[i].pos.x, game->fire[i].pos.y);
+			game->fire[i].frame = (game->fire[i].frame == 9) ? 10 : 9;
+			int x = game->fire[i].pos.x += cos(game->fire[i].angle*M_PI/180) * game->fire[i].max_vel;
+			int y = game->fire[i].pos.y -= sin(game->fire[i].angle*M_PI/180) * game->fire[i].max_vel;
+			int p = (x-(game->player.pos.x-screen->w/2))/game->hitmap_dec+
+				(y-(game->player.pos.y-screen->h/2))/game->hitmap_dec*game->hitmap_w;
+			game->fire[i].health *= .9;
+			game->hitmap[p] = MIN((int)game->hitmap[p] + game->fire[i].health, 0xff);
+		}
+	}
     for(i=0; i < game->enemy_count; i++,n++) {
 		body[n] = &game->enemy[i];
 
@@ -538,7 +579,6 @@ State game_render(Game *game, SDL_Surface *screen)
 
 	}
 	qsort(body, n, sizeof(body[0]), ysort_cmp); // blend ordering
-
     for(i=0;i<n;i++) {
         body_draw(game, body[i], screen);
     }
@@ -727,7 +767,7 @@ int main( int argc, char* args[] )
 	app.game.player.sprite = &app.game.hero;
 	app.game.player.max_vel = 10;
 	app.game.player.health = 
-	app.game.player.max_health = 100;
+	app.game.player.max_health = 1000;
 	app.game.player.action = ACTION_MOVE;
 	app.game.player.frame = 0;
 	app.game.player.pos.y = 
@@ -742,8 +782,20 @@ int main( int argc, char* args[] )
 		app.game.enemy[i].action = ACTION_DEATH;
 		app.game.enemy[i].frame = app.game.enemy[i].sprite->frame_count;
     }
-
 	app.game.enemy_count = 0;
+
+    for(i=0;i<MAX_FIRE;i++) {
+		app.game.fire[i].sprite = &app.game.zombie;
+		app.game.fire[i].health = 0;
+		app.game.fire[i].max_health = 5000;
+		app.game.fire[i].max_vel = 30;
+		app.game.fire[i].action = ACTION_DEATH;
+		app.game.fire[i].frame = 9;
+		app.game.fire[i].angle = 0;
+    }
+	app.game.fire_next = 0;
+
+
     memset(app.game.pressed, 0, sizeof(app.game.pressed));
     app.state = STATE_MENU;
     handle_menu_music();
