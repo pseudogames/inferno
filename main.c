@@ -427,15 +427,26 @@ State game_render(Game *game, SDL_Surface *screen)
 
 	// enemy move
 	for(i=0; i < game->enemy_count; i++) {
-		int angle = ATAN2(
-                game->player.pos.x-game->enemy[i].pos.x,
-			game->player.pos.y-game->enemy[i].pos.y
-		);
-		body_move(game, &game->enemy[i], angle+(rand()%60)-30);
+		int angle, a_player = 
+				ATAN2(
+					game->player.pos.x-game->enemy[i].pos.x,
+					game->player.pos.y-game->enemy[i].pos.y
+				);
+		
+		if(game->enemy[i].health < game->enemy[i].max_health * .10)
+			angle = rand()%360;
+		else if(game->enemy[i].health < game->enemy[i].max_health * .20)
+			angle = a_player + 180;
+		else if(game->enemy[i].health < game->enemy[i].max_health * .33)
+			angle = rand()%360;
+		else
+			angle = a_player;
+			
+		angle += (rand()%60)-30;
+		body_move(game, &game->enemy[i], angle);
 	}
 
     // CAMERA 
-	//printf("========\n");
 	int wsx0 = game->player.pos.x - screen->w/2;
 	int wsy0 = game->player.pos.y - screen->h/2;
 	int wsx1 = game->player.pos.x + screen->w/2;
@@ -496,6 +507,9 @@ State game_render(Game *game, SDL_Surface *screen)
     for(i=0; i < game->enemy_count; i++,n++) {
 		body[n] = &game->enemy[i];
 
+		int dist = fabs(body[n]->pos.x-game->player.pos.x)+
+				 fabs(body[n]->pos.y-game->player.pos.y);
+
 		if(body[n]->action == ACTION_DEATH) {
 			if(++body[n]->frame >= body[n]->sprite->frame_count) {
 				body[n]->action = ACTION_MOVE;
@@ -507,10 +521,23 @@ State game_render(Game *game, SDL_Surface *screen)
 				body[n]->pos.y = game->player.pos.y + sin(a) * r;
 				printf("ressurect %d %d\n",body[n]->pos.x, body[n]->pos.y);
 			}
-		} else if(body[n]->health <= 0) {
+		} else if(
+				(body[n]->health <= 0) || dist > (screen->w + screen->h)
+		) {
 			body[n]->action = ACTION_DEATH;
 			body[n]->frame = 0;
 			body[n]->angle = 0;
+		} else {
+			int attack_dist = 
+				(body[n]->sprite->rotated_frame_size.x+
+				 body[n]->sprite->rotated_frame_size.y);
+				if((body[n]->health > body[n]->max_health * .25 ) && (dist < attack_dist/4)) {
+					body[n]->action = ACTION_ATTACK;
+					if(dist < attack_dist/8)
+						game->player.health -= game->enemy[i].health*.25 *(1 - ((float)dist / (attack_dist/8)));
+				} else {
+					body[n]->action = ACTION_MOVE;
+				}
 		}
 
 	}
@@ -524,6 +551,9 @@ State game_render(Game *game, SDL_Surface *screen)
 		if(++game->player.frame >= game->player.sprite->frame_count) {
 			game->player.action = ACTION_MOVE;
 			game->player.health = game->player.max_health;
+			game->player.pos.x =
+			game->player.pos.y = 0;
+			memset(game->pressed,0,sizeof(game->pressed));
 			state = STATE_MENU;
 		}
 	} else if(game->player.health <= 0) {
