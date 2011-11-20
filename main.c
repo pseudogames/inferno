@@ -46,6 +46,13 @@ extern unsigned int stats_hud_png_len;
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
 
+int key_start = SDLK_ESCAPE;
+int key_fire = SDLK_SPACE;
+int key_right = SDLK_RIGHT;
+int key_left = SDLK_LEFT;
+int key_down = SDLK_DOWN;
+int key_up = SDLK_UP;
+
 typedef enum { 
     ACTION_MOVE=0, 
     ACTION_ATTACK, 
@@ -200,7 +207,7 @@ void sprite_gen_rotation(Sprite *sprite)
         fprintf(stderr, "CreateRGBSurface failed: %s\n", SDL_GetError());
         exit(1);
     }
-    printf("cache size %dx%d for %d angles\n", sprite->rotated->w, sprite->rotated->h, 360/ANGLE_STEP);
+    //printf("cache size %dx%d for %d angles\n", sprite->rotated->w, sprite->rotated->h, 360/ANGLE_STEP);
 
     SDL_Surface *element = SDL_CreateRGBSurface(SDL_HWSURFACE, 
             sprite->frame_size.x, 
@@ -319,8 +326,8 @@ void body_draw(Game *game, Body *body, SDL_Surface *screen)
 		body->hitmap_x = x;
 		body->hitmap_y = y;
 		game->hitmap[i] = MIN(game->hitmap[i] + body->health/4, 0xff);
-		if(game->hitmap[i]>64)
-			printf("hitmap x %d y %d = %d\n", x,y,game->hitmap[i] );
+		//if(game->hitmap[i]>64)
+			//printf("hitmap x %d y %d = %d\n", x,y,game->hitmap[i] );
 	}
 
     SDL_Rect src;
@@ -331,10 +338,9 @@ void body_draw(Game *game, Body *body, SDL_Surface *screen)
 State credit_event(Credit *credit, SDL_Event *event) { 
     switch(event->type) {
         case SDL_KEYDOWN:
-            switch(event->key.keysym.sym) {
-                case SDLK_ESCAPE:
-                case SDLK_SPACE:
-                case SDLK_RETURN:
+            if(event->key.keysym.sym == key_start ||
+               event->key.keysym.sym == key_fire)
+			{
                     return STATE_MENU;
             }
     }
@@ -344,10 +350,9 @@ State credit_event(Credit *credit, SDL_Event *event) {
 State gameover_event(Credit *credit, SDL_Event *event) { 
     switch(event->type) {
         case SDL_KEYDOWN:
-            switch(event->key.keysym.sym) {
-                case SDLK_ESCAPE:
-                case SDLK_SPACE:
-                case SDLK_RETURN:
+            if(event->key.keysym.sym == key_start ||
+               event->key.keysym.sym == key_fire)
+			{
                     return STATE_MENU;
             }
     }
@@ -357,27 +362,21 @@ State gameover_event(Credit *credit, SDL_Event *event) {
 State menu_event(Menu *menu, SDL_Event *event) { 
     switch(event->type) {
         case SDL_KEYDOWN:
-            switch(event->key.keysym.sym) {
-                case SDLK_ESCAPE:
+            if(event->key.keysym.sym == key_start) {
                     return STATE_GAME;
-                case SDLK_UP:
+            } else if(event->key.keysym.sym == key_up) {
                     play_menu_select();
                     menu->selected = (menu->selected - 1 ) % MENU_COUNT;
-                    break;
-                case SDLK_DOWN:
+            } else if(event->key.keysym.sym == key_down) {
                     play_menu_select();
                     menu->selected = (menu->selected + 1 ) % MENU_COUNT;
-                    break;
-
-                case SDLK_SPACE:
-                case SDLK_RETURN:
+			} else if(event->key.keysym.sym == key_fire) {
                     play_menu_confirm();
                     switch(menu->selected) {
                         case MENU_START:  return STATE_GAME;
                         case MENU_CREDIT: return STATE_CREDIT;
                         case MENU_QUIT:   return STATE_QUIT;
                     }
-                    break;
             }
     }
     return STATE_MENU;
@@ -431,28 +430,10 @@ State game_event(Game *game, SDL_Event *event) {
         case SDL_QUIT:
             return STATE_QUIT;
         case SDL_KEYDOWN:
-            switch(event->key.keysym.sym) {
-                case SDLK_ESCAPE:
+            if(event->key.keysym.sym == key_start) {
                     return STATE_MENU;
-
-                case SDLK_r:
+			} else if(event->key.keysym.sym == SDLK_r) {
                     game_init(game);
-                    break;
-
-                case SDLK_m:
-                    break;
-
-                case SDLK_p:
-                    playPunch();
-                    break;
-
-                case SDLK_s:
-                    playShot();
-                    break;
-
-                case SDLK_i:
-                    playPick();
-                    break;
             }
             //nobreak, slip...
         case SDL_KEYUP:
@@ -528,8 +509,8 @@ State game_render(Game *game, SDL_Surface *screen)
 	if(game->enemy_count <= MAX_ENEMIES && (rand()%FPS) == 0)
 		game->enemy_count ++;
 
-    float dx=game->pressed[SDLK_RIGHT]-game->pressed[SDLK_LEFT];
-    float dy=game->pressed[SDLK_DOWN]-game->pressed[SDLK_UP];
+    float dx=game->pressed[key_right]-game->pressed[key_left];
+    float dy=game->pressed[key_down]-game->pressed[key_up];
     if(fabs(dx)>0.1||fabs(dy)>0.1) {
         int angle = ATAN2(dx,dy);
         body_move(game, &game->player, angle);
@@ -538,7 +519,7 @@ State game_render(Game *game, SDL_Surface *screen)
 
 	// player fire
 	if(game->player.action != ACTION_DEATH) {
-		if(game->pressed[SDLK_RETURN] || game->pressed[SDLK_SPACE]) {
+		if(game->pressed[key_fire]) {
 			game->player.action = ACTION_ATTACK;
 			fire_shot(game, &game->player);
 		} else {
@@ -629,7 +610,7 @@ State game_render(Game *game, SDL_Surface *screen)
 			body[n++] = &game->fire[i];
 			body_move(game,&game->fire[i],game->fire[i].angle);
 			game->fire[i].health *= .95;
-			printf("%d) %d [%d, %d]\n", i, game->fire[i].health, game->fire[i].pos.x, game->fire[i].pos.y);
+			//printf("%d) %d [%d, %d]\n", i, game->fire[i].health, game->fire[i].pos.x, game->fire[i].pos.y);
 		}
 	}
     for(i=0; i < game->enemy_count; i++,n++) {
@@ -647,7 +628,7 @@ State game_render(Game *game, SDL_Surface *screen)
 				int r = MAX(screen->w,screen->h);
 				body[n]->pos.x = game->player.pos.x + cos(a) * r;
 				body[n]->pos.y = game->player.pos.y + sin(a) * r;
-				printf("ressurect %d %d\n",body[n]->pos.x, body[n]->pos.y);
+				//printf("ressurect %d %d\n",body[n]->pos.x, body[n]->pos.y);
 			}
 		} else if(
 				(body[n]->health <= 0) || dist > (screen->w + screen->h)
