@@ -402,6 +402,10 @@ void hud_draw(Game *game, SDL_Surface *screen ){
     SDL_Rect src = {45, 15, game->player.health * 2, 15};
     SDL_FillRect(screen, &src, 0x0000ffff);
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
+
+    SDL_Rect hista_src = {45, 42, game->player.max_vel * 19 , 15};
+    SDL_FillRect(screen, &hista_src, 0x00ff00ff);
+    SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 }
 
 State game_render(Game *game, SDL_Surface *screen)
