@@ -9,8 +9,8 @@
 #include "sound.h"
 #include "font.h"
 
-#define FPS 9
-#define MAX_ENEMIES 33
+#define FPS 25
+#define MAX_ENEMIES 3
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
@@ -19,6 +19,9 @@
 
 extern unsigned char sprite_png[];
 extern unsigned int sprite_png_len;
+
+extern unsigned char mapa_jpg[];
+extern unsigned int mapa_jpg_len;
 
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
@@ -73,11 +76,13 @@ typedef struct{
     Body player;
     Body enemy[MAX_ENEMIES];
     int pressed[SDLK_LAST];
+    SDL_Surface *background;
 } Game;
 
 typedef struct{
     SDL_Surface *image; 
     MenuItem selected;
+    SDL_Surface *background;
 } Menu;
 
 typedef struct{
@@ -90,6 +95,7 @@ typedef struct{
     Menu menu;
     Credit credit;
     State state;
+    SDL_Surface *background;
 } App;
 
 
@@ -186,6 +192,8 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
     sprite_gen_rotation(sprite);
 }
 
+
+
 void body_init(Body *body, Sprite *sprite, int max_health, float max_vel, int x, int y)
 {
     memset(body,0,sizeof(Body));
@@ -210,9 +218,13 @@ void body_move(Body *body, int angle)
     // TODO collision
 }
 
-void body_draw(Body *body, SDL_Surface *screen)
+void body_draw(Game *game, Body *body, SDL_Surface *screen)
 {
-    SDL_Rect dst = {body->pos.x,body->pos.y,0,0};
+    SDL_Rect dst = {
+		screen->w/2 - body->sprite->frame_size.x/2 + body->pos.x - game->player.pos.x,
+		screen->h/2 - body->sprite->frame_size.y/2 + body->pos.y - game->player.pos.y,
+		0,0
+	};
     SDL_Rect src;
     sprite_rotated_rect(body->sprite, body->action, body->frame, body->angle, &src);
     SDL_BlitSurface( body->sprite->rotated, &src, screen, &dst );
@@ -302,16 +314,10 @@ int ysort_cmp(const void *a, const void *b)
 void game_render(Game *game, SDL_Surface *screen)
 {
     // move player
-    float up=0,down=0,left=0,right=0;
-    float accel=.2;
-    int i;
+    int i,x,y;
 
-    up   =   up*(1-accel)+game->pressed[SDLK_UP   ]*accel;
-    down = down*(1-accel)+game->pressed[SDLK_DOWN ]*accel;
-    left = left*(1-accel)+game->pressed[SDLK_LEFT ]*accel;
-    right=right*(1-accel)+game->pressed[SDLK_RIGHT]*accel;
-    float dx=right-left;
-    float dy=down-up;
+    float dx=game->pressed[SDLK_RIGHT]-game->pressed[SDLK_LEFT];
+    float dy=game->pressed[SDLK_DOWN]-game->pressed[SDLK_UP];
     if(fabs(dx)>0.1||fabs(dy)>0.1) {
         int angle = (int)(720+atan2(-dy,dx)*180/M_PI)%360;
         body_move(&game->player, angle);
@@ -322,7 +328,47 @@ void game_render(Game *game, SDL_Surface *screen)
         }
     }
 
-	// render
+    // CAMERA 
+	printf("========\n");
+	int wsx0 = game->player.pos.x - screen->w/2;
+	int wsy0 = game->player.pos.y - screen->h/2;
+	int wsx1 = game->player.pos.x + screen->w/2;
+	int wsy1 = game->player.pos.y + screen->h/2;
+	int x0 = floor((float)wsx0/game->background->w);
+	int y0 = floor((float)wsy0/game->background->h);
+	int x1 = floor((float)wsx1/game->background->w);
+	int y1 = floor((float)wsy1/game->background->h);
+	for(x=x0; x<=x1; x++) {
+		for(y=y0; y<=y1; y++) {
+			int wmx0 = x*game->background->w;
+			int wmy0 = y*game->background->h;
+			int wmx1 = wmx0 + game->background->w;
+			int wmy1 = wmy0 + game->background->h;
+
+			int wix0 = MAX(wmx0, wsx0);
+			int wiy0 = MAX(wmy0, wsy0);
+			int wix1 = MIN(wmx1, wsx1);
+			int wiy1 = MIN(wmy1, wsy1);
+
+			int mix0 = wix0 - wmx0;
+			int miy0 = wiy0 - wmy0;
+			int mix1 = wix1 - wmx1;
+			int miy1 = wiy1 - wmy1;
+
+			int six0 = wix0 - wsx0;
+			int siy0 = wiy0 - wsy0;
+			int six1 = wix1 - wsx1;
+			int siy1 = wiy1 - wsy1;
+
+			printf("a) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx0,wsy0, wmx0,wmy0, wix0,wiy0, mix0,miy0, six0,siy0);
+			printf("b) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx1,wsy1, wmx1,wmy1, wix1,wiy1, mix1,miy1, six1,siy1);
+			SDL_Rect src = {mix0, miy0, mix1-mix0, miy1-miy0};
+			SDL_Rect dst = {six0, siy0, six1-six0, siy1-siy0};
+			SDL_BlitSurface( game->background, &src, screen, &dst );
+		}
+	}
+
+	// BODIES
 	Body *ysort[1+MAX_ENEMIES];
     for(i=0;i<MAX_ENEMIES;i++) {
 		ysort[i] = &game->enemy[i];
@@ -331,17 +377,25 @@ void game_render(Game *game, SDL_Surface *screen)
 	qsort(ysort, sizeof(ysort)/sizeof(ysort[0]), sizeof(ysort[0]), ysort_cmp);
 
     for(i=0;i<1+MAX_ENEMIES;i++) {
-        body_draw(ysort[i], screen);
+        body_draw(game, ysort[i], screen);
     }
 }
 
 void menu_render(Menu *menu, SDL_Surface *screen)
 {
-    text_write(screen, 300, 10, "INFERNO", 0);
-    text_write(screen, 100, 200, "new game", menu->selected ^ 0);
-    text_write(screen, 100, 300, "continue game", menu->selected ^ 1);
-    text_write(screen, 100, 400, "credits", menu->selected ^ 2);
-    text_write(screen, 100, 500, "exit", menu->selected ^ 3);
+    Uint32 ticks = SDL_GetTicks();
+
+    int x = (1+cos(ticks/15000.0))*(menu->background->w/2-screen->w/2);
+    int y = (1+sin(ticks/15000.0))*(menu->background->h/2-screen->h/2);
+
+    SDL_Rect src = {x, y, screen->w, screen->h};
+    SDL_BlitSurface( menu->background, &src, screen, NULL );
+
+    text_write(screen, 300, 50, "INFERNO", 0);
+    text_write(screen, 100, 250, "new game", menu->selected ^ 0);
+    text_write(screen, 100, 350, "continue game", menu->selected ^ 1);
+    text_write(screen, 100, 450, "credits", menu->selected ^ 2);
+    text_write(screen, 100, 550, "exit", menu->selected ^ 3);
 }
 
 void credit_render(Credit *credit, SDL_Surface *screen)
@@ -389,6 +443,14 @@ int main( int argc, char* args[] )
     loadEffects();
 
     handleMusic();
+    
+    SDL_Surface *tmp_bg = IMG_Load_RW( SDL_RWFromMem(mapa_jpg, mapa_jpg_len), 1 );
+
+    app.background = zoomSurface(tmp_bg, 2, 2, 1);
+    app.menu.background = app.background;
+    app.game.background = app.background;
+
+    SDL_FreeSurface(tmp_bg);
 
     app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
@@ -412,7 +474,7 @@ int main( int argc, char* args[] )
                 &app.game.enemy[i],
                 &app.game.zombie,
                 25, // health
-                5, // speed
+                7, // speed
                 rand() % app.screen->w, // x
                 rand() % app.screen->h // y
                 );
