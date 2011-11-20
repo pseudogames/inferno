@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "sound.h"
+#include "font.h"
 
 #define FPS 9
 #define MAX_ENEMIES 333
@@ -39,6 +40,7 @@ typedef enum {
 
 typedef enum { 
     MENU_START = 0,
+    MENU_CONTINUE,
     MENU_CREDIT, 
     MENU_QUIT,
     MENU_COUNT
@@ -236,14 +238,17 @@ State menu_event(Menu *menu, SDL_Event *event) {
                 case SDLK_ESCAPE:
                     return STATE_GAME;
                 case SDLK_UP:
+                    play_menu_select();
                     menu->selected = (menu->selected - 1 ) % MENU_COUNT;
                     break;
                 case SDLK_DOWN:
+                    play_menu_select();
                     menu->selected = (menu->selected + 1 ) % MENU_COUNT;
                     break;
 
                 case SDLK_SPACE:
                 case SDLK_RETURN:
+                    play_menu_confirm();
                     switch(menu->selected) {
                         case MENU_START:  return STATE_GAME;
                         case MENU_CREDIT: return STATE_CREDIT;
@@ -264,7 +269,6 @@ State game_event(Game *game, SDL_Event *event) {
                 case SDLK_ESCAPE:
                     return STATE_MENU;
                 case SDLK_m:
-                    handleMusic();
                     break;
 
                 case SDLK_p:
@@ -332,7 +336,11 @@ void game_render(Game *game, SDL_Surface *screen)
 
 void menu_render(Menu *menu, SDL_Surface *screen)
 {
-    // TODO
+    text_write(screen, 300, 10, "INFERNO", 0);
+    text_write(screen, 100, 200, "new game", menu->selected ^ 0);
+    text_write(screen, 100, 300, "continue game", menu->selected ^ 1);
+    text_write(screen, 100, 400, "credits", menu->selected ^ 2);
+    text_write(screen, 100, 500, "exit", menu->selected ^ 3);
 }
 
 void credit_render(Credit *credit, SDL_Surface *screen)
@@ -370,11 +378,16 @@ int main( int argc, char* args[] )
     }
 #endif
 
+    // init font system 
+    init_font();
+
     // music manager
     initMusic();
 
     // effects manager 
     loadEffects();
+
+    handleMusic();
 
     app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
@@ -405,10 +418,9 @@ int main( int argc, char* args[] )
     }
 
     memset(app.game.pressed, 0, sizeof(app.game.pressed));
-
+    app.menu.selected = 0; 
     // main loop
 
-	app.state = STATE_GAME;
     while(app.state != STATE_QUIT) {
         Uint32 start = SDL_GetTicks();
         SDL_Event event;

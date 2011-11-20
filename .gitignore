@@ -4,6 +4,6 @@
 *.bmp
 *.ogg
 *.wav
+*.ttf
 sprite.c
 inferno
-stdout.txt

@@ -4,6 +4,8 @@ Mix_Music *music = NULL;
 Mix_Chunk *punchptr[5];
 Mix_Chunk *shotptr;
 Mix_Chunk *pickptr;
+Mix_Chunk *menu_confirm_ptr;
+Mix_Chunk *menu_select_ptr;
 
 IAudio a; 
 
@@ -20,6 +22,8 @@ void loadEffects(){
 
     shotptr = Mix_LoadWAV("./audio/shot/m60.wav");
     pickptr = Mix_LoadWAV("./audio/shot/pick.wav");
+    menu_select_ptr = Mix_LoadWAV("./audio/shot/pick.wav");
+    menu_confirm_ptr = Mix_LoadWAV("./audio/shot/shot.wav");
 }
 
 
@@ -33,6 +37,14 @@ void playShot() {
 
 void playPick() {
     pickChannel = Mix_PlayChannel(-1, pickptr, 0);
+}
+
+void play_menu_select() {
+    Mix_PlayChannel(-1, menu_select_ptr, 0);
+}
+
+void play_menu_confirm() {
+    Mix_PlayChannel(-1, menu_confirm_ptr, 0);
 }
 
 void initMusic() { 

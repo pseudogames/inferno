@@ -23,8 +23,11 @@ main.o: main.c
 sound.o: sound.c
 	gcc $< `sdl-config --cflags` -c -o $@
 
-inferno: main.o sprite.o sound.o
-	gcc $(CFLAGS) $(LDFLAGS) $^ -lSDL_gfx -lSDL_image -lSDL_mixer `sdl-config --libs` -o $@
+font.o: font.c
+	gcc $< `sdl-config --cflags` -c -o $@
+
+inferno: main.o sprite.o sound.o font.o
+	gcc $(CFLAGS) $(LDFLAGS) $^ -lSDL_gfx -lSDL_image -lSDL_mixer -lSDL_ttf `sdl-config --libs` -o $@
 
 debug: inferno
 	gdb $<
