@@ -113,6 +113,7 @@ typedef struct{
 	int hitmap_h;
 	int hitmap_len;
 	Uint8 *hitmap;
+	int heatmap;
 } Game;
 
 typedef struct{
@@ -473,7 +474,7 @@ State game_render(Game *game, SDL_Surface *screen)
 		Uint32 *p = (Uint32*)(((Uint8*)screen->pixels)+screen->pitch*(y*game->hitmap_dec+game->hitmap_dec/2)+game->hitmap_dec/2);
 		for(x=0; x<game->hitmap_w; x++,p+=game->hitmap_dec) {
 			Uint8 *c = (Uint8*)p;
-			int v = (int)(c[1]+c[2]+1)/(c[3]+1);
+			int v = (int)(c[1]+c[2]+1)/(c[3]/32+1);
 			if(v<64) v = 0;
 			game->hitmap[x+y*game->hitmap_w] = v;
 		}
@@ -525,8 +526,7 @@ State game_render(Game *game, SDL_Surface *screen)
 	}
 
 
-#if 1
-	{ // DEBUG HITMAP
+	if(game->heatmap) { // DEBUG HITMAP
 		SDL_Surface *tile = SDL_CreateRGBSurface(SDL_HWSURFACE, 
 				game->hitmap_dec, 
 				game->hitmap_dec,
@@ -548,7 +548,6 @@ State game_render(Game *game, SDL_Surface *screen)
 
 		SDL_FreeSurface(tile);
 	}
-#endif
 	
     hud_draw(game, screen);
 
@@ -669,9 +668,9 @@ int main( int argc, char* args[] )
     app.menu.background = app.background;
     app.game.background = app.background;
     app.credit.background = app.background;
-
     SDL_FreeSurface(tmp_bg);
 
+	app.game.heatmap = 0;
 
 	app.game.hitmap_dec = 24;
 	app.game.hitmap_w = app.screen->w/app.game.hitmap_dec;
@@ -743,6 +742,10 @@ int main( int argc, char* args[] )
                     switch(event.key.keysym.sym) {
                         case SDLK_q:
                             app.state = STATE_QUIT;
+							break;
+                        case SDLK_h:
+                            app.game.heatmap ^= 1;
+							break;
                     }
             }
         }
