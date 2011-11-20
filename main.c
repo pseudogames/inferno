@@ -40,8 +40,8 @@ extern unsigned int creditos_jpg_len;
 extern unsigned char player_hud_png[];
 extern unsigned int player_hud_png_len;
 
-extern unsigned char stats_hud_png[];
-extern unsigned int stats_hud_png_len;
+extern unsigned char caveira_png[];
+extern unsigned int caveira_png_len;
 
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
@@ -120,7 +120,6 @@ typedef struct{
 	int fire_next;
     
     SDL_Surface *player_hud;
-
     SDL_Surface *stats_hud;
 
     int body_count; 
@@ -294,6 +293,9 @@ void body_move(Game *game, Body *body, int angle)
 		if(high>0x90) {
 			body->health -= high/16;
 			v *= .25;
+            if (body->health < 0){
+                body->health = 0;
+            }
 		}
 	}
 
@@ -347,41 +349,6 @@ State credit_event(Credit *credit, SDL_Event *event) {
     return STATE_CREDIT;
 }
 
-State gameover_event(Credit *credit, SDL_Event *event) { 
-    switch(event->type) {
-        case SDL_KEYDOWN:
-            if(event->key.keysym.sym == key_start ||
-               event->key.keysym.sym == key_fire)
-			{
-                    return STATE_MENU;
-            }
-    }
-    return STATE_GAMEOVER;
-}
-
-State menu_event(Menu *menu, SDL_Event *event) { 
-    switch(event->type) {
-        case SDL_KEYDOWN:
-            if(event->key.keysym.sym == key_start) {
-                    return STATE_GAME;
-            } else if(event->key.keysym.sym == key_up) {
-                    play_menu_select();
-                    menu->selected = (menu->selected - 1 ) % MENU_COUNT;
-            } else if(event->key.keysym.sym == key_down) {
-                    play_menu_select();
-                    menu->selected = (menu->selected + 1 ) % MENU_COUNT;
-			} else if(event->key.keysym.sym == key_fire) {
-                    play_menu_confirm();
-                    switch(menu->selected) {
-                        case MENU_START:  return STATE_GAME;
-                        case MENU_CREDIT: return STATE_CREDIT;
-                        case MENU_QUIT:   return STATE_QUIT;
-                    }
-            }
-    }
-    return STATE_MENU;
-}
-
 void game_init(Game *game)
 {
 	memset(game->hitmap, 0, game->hitmap_len);
@@ -395,6 +362,8 @@ void game_init(Game *game)
 	game->player.frame = 0;
 	game->player.pos.y = 
 	game->player.pos.x = 0;
+
+	game->body_count = 0;
 
     int i;
     for(i=0;i<MAX_ENEMIES;i++) {
@@ -424,6 +393,42 @@ void game_init(Game *game)
 
     game->started = SDL_GetTicks();
 }
+State gameover_event(Game *game, SDL_Event *event) { 
+    switch(event->type) {
+        case SDL_KEYDOWN:
+            if(event->key.keysym.sym == key_start ||
+               event->key.keysym.sym == key_fire)
+			{
+                    game_init(game);
+                    return STATE_MENU;
+            }
+    }
+    return STATE_GAMEOVER;
+}
+
+State menu_event(Menu *menu, SDL_Event *event) { 
+    switch(event->type) {
+        case SDL_KEYDOWN:
+            if(event->key.keysym.sym == key_start) {
+                    return STATE_GAME;
+            } else if(event->key.keysym.sym == key_up) {
+                    play_menu_select();
+                    menu->selected = (menu->selected - 1 ) % MENU_COUNT;
+            } else if(event->key.keysym.sym == key_down) {
+                    play_menu_select();
+                    menu->selected = (menu->selected + 1 ) % MENU_COUNT;
+			} else if(event->key.keysym.sym == key_fire) {
+                    play_menu_confirm();
+                    switch(menu->selected) {
+                        case MENU_START:  return STATE_GAME;
+                        case MENU_CREDIT: return STATE_CREDIT;
+                        case MENU_QUIT:   return STATE_QUIT;
+                    }
+            }
+    }
+    return STATE_MENU;
+}
+
 
 State game_event(Game *game, SDL_Event *event) { 
     switch(event->type) {
@@ -451,6 +456,7 @@ int ysort_cmp(const void *a, const void *b)
 
 void hud_setup(Game *game, SDL_Surface *screen){
    game->player_hud = IMG_Load_RW( SDL_RWFromMem(player_hud_png, player_hud_png_len), 1 );
+   game->stats_hud = IMG_Load_RW( SDL_RWFromMem(caveira_png, caveira_png_len), 1 );
 }
 
 void hud_timer(Game *game, char *timer) { 
@@ -476,10 +482,17 @@ void hud_draw(Game *game, SDL_Surface *screen ){
 
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 
+    SDL_Rect skull_src = {screen->w - game->stats_hud->w - 130,0 , 0};
+    SDL_BlitSurface( game->stats_hud, NULL, screen, &skull_src);
+
 
     char timer[40];
     hud_timer(game, &timer[0]);
     text_write_raw(screen, 300, 10, timer, white, 45);
+
+    char body_count[10];
+    sprintf(body_count, "%d", game->body_count);
+    text_write_raw(screen, 900, 10, body_count, white, 18);
 }
 
 void fire_shot(Game *game, Body *launcher)
@@ -491,8 +504,8 @@ void fire_shot(Game *game, Body *launcher)
 	shot->pos.x = launcher->pos.x;
 	shot->pos.y = launcher->pos.y;
 	shot->angle = launcher->angle;
-	shot->pos.x += cos(shot->angle*M_PI/180) * shot->max_vel;
-	shot->pos.y -= sin(shot->angle*M_PI/180) * shot->max_vel;
+	shot->pos.x += cos(shot->angle*M_PI/180) * shot->max_vel *2;
+	shot->pos.y -= sin(shot->angle*M_PI/180) * shot->max_vel *2;
 	shot->health = shot->max_health;
 	game->fire_next = (game->fire_next+1) % MAX_FIRE;
 }
@@ -636,6 +649,8 @@ State game_render(Game *game, SDL_Surface *screen)
 			body[n]->action = ACTION_DEATH;
 			body[n]->frame = 0;
 			body[n]->angle = 0;
+            if (body[n]->health <= 0)
+                game->body_count++;
 		} else {
 			int attack_dist = 
 				(body[n]->sprite->rotated_frame_size.x+
@@ -657,7 +672,6 @@ State game_render(Game *game, SDL_Surface *screen)
 
 	if(game->player.action == ACTION_DEATH) {
 		if(++game->player.frame >= game->player.sprite->frame_count) {
-			game_init(game);
 			state = STATE_GAMEOVER;
 		}
 	} else if(game->player.health <= 0) {
@@ -721,6 +735,13 @@ void gameover_render(Game *game, SDL_Surface *screen)
     hud_timer(game, &timer[0]);
     text_write_raw(screen, 100, 400, "You survived, but not enough", white, 45);
     text_write_raw(screen, 530, 450, timer, white, 45);
+
+
+    char s[50]; 
+    sprintf(s, "You killed %d zombies, well done", game->body_count);
+
+    text_write_raw(screen, 100, 600, s, white, 45);
+
     /*text_write_raw(screen, 200, 250, "programming", red, 36);*/
         /*text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);*/
         /*text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);*/
@@ -867,6 +888,7 @@ int main( int argc, char* args[] )
     SDL_FreeSurface(tmp_bg);
 
 	app.game.heatmap = 0;
+	app.game.body_count = 0;
 
 	app.game.hitmap_dec = 24;
 	app.game.hitmap_w = app.screen->w/app.game.hitmap_dec;
@@ -913,7 +935,7 @@ int main( int argc, char* args[] )
                 case STATE_GAME: app.state = game_event  (&app.game,   &event); break;
                 case STATE_MENU:   app.state = menu_event  (&app.menu,   &event); break;
                 case STATE_CREDIT: app.state = credit_event(&app.credit, &event); break;
-                case STATE_GAMEOVER: app.state = gameover_event(&app.credit, &event); break;
+                case STATE_GAMEOVER: app.state = gameover_event(&app.game, &event); break;
             }
 
             switch(event.type) {
