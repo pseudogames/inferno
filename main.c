@@ -118,14 +118,14 @@ void sprite_rotated_rect(Sprite *sprite, Action action, int frame, int angle, SD
 
 void sprite_gen_rotation(Sprite *sprite)
 {
-	rotozoomSurfaceSize(
-		sprite->frame_size.x,
-		sprite->frame_size.y,
-		45, // to maximize size
-		ZOOM,  // no zoom
-		&sprite->rotated_frame_size.x,
-		&sprite->rotated_frame_size.y
-	);
+    rotozoomSurfaceSize(
+            sprite->frame_size.x,
+            sprite->frame_size.y,
+            45, // to maximize size
+            ZOOM,  // no zoom
+            &sprite->rotated_frame_size.x,
+            &sprite->rotated_frame_size.y
+            );
 
     if(sprite->rotated)
         SDL_FreeSurface(sprite->rotated);
@@ -145,9 +145,9 @@ void sprite_gen_rotation(Sprite *sprite)
             sprite->frame_size.y,
             RGBA_FORMAT);
 
-	SDL_SetAlpha(sprite->source,0,0xff);
-	SDL_SetAlpha(element,0,0xff);
-	SDL_SetAlpha(sprite->rotated,SDL_SRCALPHA,0xff);
+    SDL_SetAlpha(sprite->source,0,0xff);
+    SDL_SetAlpha(element,0,0xff);
+    SDL_SetAlpha(sprite->rotated,SDL_SRCALPHA,0xff);
 
     int frame, action, angle;
     for(action=0; action<ACTION_COUNT; action++) {
@@ -160,8 +160,8 @@ void sprite_gen_rotation(Sprite *sprite)
                 SDL_FillRect(element, NULL, 0x00000000);
                 SDL_BlitSurface( sprite->source, &src, element, NULL );
                 SDL_Surface *rotozoom = rotozoomSurface(element, angle, ZOOM, SMOOTHING_ON);
-				SDL_SetAlpha(rotozoom,0,0);
-				SDL_SetColorKey(rotozoom,0,0);
+                SDL_SetAlpha(rotozoom,0,0);
+                SDL_SetColorKey(rotozoom,0,0);
                 dst.x += dst.w/2 - rotozoom->w/2;
                 dst.y += dst.h/2 - rotozoom->h/2; // center
                 SDL_BlitSurface(rotozoom, NULL, sprite->rotated, &dst );
@@ -310,27 +310,27 @@ void game_render(Game *game, SDL_Surface *screen)
         int angle = (int)(720+atan2(-dy,dx)*180/M_PI)%360;
         body_move(&game->player, angle);
 
-		// enemy move
-		for(i=0;i<MAX_ENEMIES;i++) {
-			body_move(&game->enemy[i], angle+rand()%10);
-		}
+        // enemy move
+        for(i=0;i<MAX_ENEMIES;i++) {
+            body_move(&game->enemy[i], angle+rand()%10);
+        }
     }
 
 
-	// render
+    // render
 #if 0
-	int ysort[1+MAX_ENEMIES];
+    int ysort[1+MAX_ENEMIES];
     for(i=0;i<MAX_ENEMIES;i++) {
-		ysort[i] = &enemy[i];
-	}
-	ysort[MAX_ENEMIES] = &player;
-	
-	qsort
+        ysort[i] = &enemy[i];
+    }
+    ysort[MAX_ENEMIES] = &player;
+
+    qsort
 #endif
 
-    for(i=0;i<MAX_ENEMIES;i++) {
-        body_draw(&game->enemy[i], screen);
-    }
+        for(i=0;i<MAX_ENEMIES;i++) {
+            body_draw(&game->enemy[i], screen);
+        }
     body_draw(&game->player, screen);
 }
 
