@@ -9,6 +9,7 @@ Mix_Chunk *menu_select_ptr;
 
 IAudio a; 
 
+// Effects 
 extern unsigned char punch0_wav[];
 extern unsigned int punch0_wav_len;
 extern unsigned char punch1_wav[];
@@ -25,8 +26,21 @@ extern unsigned char shot_wav[];
 extern unsigned int shot_wav_len;
 extern unsigned char m60_wav[];
 extern unsigned int m60_wav_len;
+extern unsigned char menu_wav[];
+extern unsigned int menu_wav_len;
+extern unsigned char menu_select_wav[];
+extern unsigned int menu_select_wav_len;
+
+//Music 
+
+extern unsigned char music_menu_ogg[];
+extern unsigned int music_menu_ogg_len;
+
+extern unsigned char music_ingame_ogg[];
+extern unsigned int music_ingame_ogg_len;
 
 int punchChannel, shotChannel, pickChannel  = -1;
+SDL_RWops *rw = NULL;
 
 void loadEffects(){
     punchptr[0] = Mix_LoadWAV_RW(SDL_RWFromMem(punch0_wav, punch0_wav_len), 1 );
@@ -37,10 +51,13 @@ void loadEffects(){
 
     shotptr = Mix_LoadWAV_RW(SDL_RWFromMem(m60_wav, m60_wav_len), 1 );
     pickptr = Mix_LoadWAV_RW(SDL_RWFromMem(pick_wav, pick_wav_len), 1 );
-    menu_select_ptr = Mix_LoadWAV_RW(SDL_RWFromMem(pick_wav, pick_wav_len), 1 );
-    menu_confirm_ptr = Mix_LoadWAV_RW(SDL_RWFromMem(shot_wav, shot_wav_len), 1 );
+    menu_select_ptr = Mix_LoadWAV_RW(SDL_RWFromMem(menu_wav, menu_wav_len), 1 );
+    menu_confirm_ptr = Mix_LoadWAV_RW(SDL_RWFromMem(menu_select_wav, menu_select_wav_len), 1 );
 }
 
+
+void load_music() {
+}
 
 void playPunch(){ 
     punchChannel = Mix_PlayChannel(-1, punchptr[rand() %  5], 0);
@@ -76,21 +93,21 @@ void initMusic() {
     Mix_QuerySpec(&a.rate, &a.format, &a.channels);
 }
 
-void handleMusic() { 
-    if(music == NULL) {
-        music = Mix_LoadMUS("music.ogg");
-        Mix_PlayMusic(music, 1);
-        Mix_HookMusicFinished(doneMusic);
-
-    } else {
-        Mix_HaltMusic();
-        Mix_FreeMusic(music);
-        music = NULL;
-    }
+void handle_menu_music() { 
+    rw = SDL_RWFromMem(music_menu_ogg, music_menu_ogg_len);
+    music = Mix_LoadMUS_RW(rw);
+    Mix_PlayMusic(music, -1);
 }
 
-void doneMusic() {
+void handle_ingame_music() { 
+    rw = SDL_RWFromMem(music_ingame_ogg, music_ingame_ogg_len); 
+    music = Mix_LoadMUS_RW(rw);
+    Mix_PlayMusic(music, -1);
+}
+
+void halt_music(){ 
     Mix_HaltMusic();
     Mix_FreeMusic(music);
+    /*SDL_FreeRW(rw);*/
     music = NULL;
 }

@@ -463,7 +463,7 @@ int main( int argc, char* args[] )
     // effects manager 
     loadEffects();
 
-    handleMusic();
+    /*handle_menu_music();*/
     
     SDL_Surface *tmp_bg = IMG_Load_RW( SDL_RWFromMem(mapa_jpg, mapa_jpg_len), 1 );
 
@@ -509,7 +509,9 @@ int main( int argc, char* args[] )
 	app.game.enemy_count = 0;
     memset(app.game.pressed, 0, sizeof(app.game.pressed));
     app.state = STATE_MENU;
+    handle_menu_music();
     app.menu.selected = 0; 
+    int last_state = 0;
     // main loop
 
     while(app.state != STATE_QUIT) {
@@ -518,7 +520,7 @@ int main( int argc, char* args[] )
         if( SDL_PollEvent( &event ) )
         {
             switch(app.state) {
-                case STATE_GAME:   app.state = game_event  (&app.game,   &event); break;
+                case STATE_GAME: app.state = game_event  (&app.game,   &event); break;
                 case STATE_MENU:   app.state = menu_event  (&app.menu,   &event); break;
                 case STATE_CREDIT: app.state = credit_event(&app.credit, &event); break;
             }
@@ -533,19 +535,30 @@ int main( int argc, char* args[] )
                             app.state = STATE_QUIT;
                     }
             }
-
-
         }
 
         SDL_FillRect(app.screen, NULL, 0);
         switch(app.state) {
-            case STATE_GAME:   game_render  (&app.game,   app.screen); break;
-            case STATE_MENU:   menu_render  (&app.menu,   app.screen); break;
+            case STATE_GAME:   
+                game_render  (&app.game,   app.screen); 
+                if(last_state != STATE_GAME){
+                    halt_music();
+                    handle_ingame_music(); 
+                }
+                break;
+            case STATE_MENU:   
+                menu_render  (&app.menu,   app.screen);
+                if(last_state != STATE_MENU){
+                    halt_music();
+                    handle_menu_music(); 
+                break;
+                }
+
             case STATE_CREDIT: credit_render(&app.credit, app.screen); break;
         }
         SDL_Flip( app.screen );
-
         timing_control(start);
+        last_state = app.state;
     }
 
     // TODO free surfaces, like SDL_FreeSurface( sprite );

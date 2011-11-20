@@ -3,7 +3,7 @@ CFLAGS=-g
 all: inferno
 
 clean:
-	rm -fv inferno inferno.exe sprite.png sprite.c main.o zombie.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o m60.wav pick.wav shot.wav punch0.wav punch1.wav punch2.wav punch3.wav punch4.wav acid.ttf adler.ttf acid.o adler.o acid.c adler.c mapa.c mapa.o mapa.jpg hero.c hero.o zombie.c
+	rm -fv inferno inferno.exe *.png *.o *.wav *.ogg *.jpg *.ttf acid.c adler.c mapa.c hero.c zombie.c
 
 
 # FIXME troll mode
@@ -27,6 +27,14 @@ acid.ttf: ~/Dropbox/inferno/acid.ttf
 	cp -v $< $@
 adler.ttf: ~/Dropbox/inferno/adler.ttf
 	cp -v $< $@
+menu.wav: ~/Dropbox/inferno/menu.wav
+	cp -v $< $@
+menu_select.wav: ~/Dropbox/inferno/menu_select.wav
+	cp -v $< $@
+zombie.png: ~/Dropbox/inferno/inferno_zombie_1.png 
+	cp -v $< $@
+hero.png: ~/Dropbox/inferno/inferno_hero.png 
+	cp -v $< $@
 
 %.c : %.wav
 	xxd -i $< > $@
@@ -43,13 +51,16 @@ adler.ttf: ~/Dropbox/inferno/adler.ttf
 %.o : %.c
 	gcc $(CFLAGS) $< -c -o $@
 
-zombie.png: ~/Dropbox/inferno/inferno_zombie_1.png 
-	convert $< $@
-
-hero.png: ~/Dropbox/inferno/inferno_hero.png 
-	convert $< $@
+%.c : %.ogg
+	xxd -i $< > $@
 
 music.ogg: ~/Dropbox/inferno/music.ogg
+	cp $< $@
+
+music_menu.ogg: ~/Dropbox/inferno/music_menu.ogg
+	cp $< $@
+
+music_ingame.ogg: ~/Dropbox/inferno/music_ingame.ogg
 	cp $< $@
 
 mapa.jpg: ~/Dropbox/inferno/mapa.jpg
@@ -67,7 +78,7 @@ font.o: font.c
 acid.c: ~/Dropbox/inferno/acid.ttf
 adler.c: ~/Dropbox/inferno/adler.ttf
 
-inferno: main.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o adler.o acid.o mapa.o hero.o zombie.o
+inferno: main.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o adler.o acid.o mapa.o menu.o menu_select.o music_ingame.o music_menu.o hero.o zombie.o
 	gcc $(CFLAGS) $(LDFLAGS) $^ -lSDL_gfx -lSDL_image -lSDL_mixer -lSDL_ttf `sdl-config --libs` -o $@
 
 debug: inferno
