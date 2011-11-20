@@ -25,6 +25,8 @@ extern unsigned char hero_png[];
 extern unsigned int hero_png_len;
 extern unsigned char zombie_png[];
 extern unsigned int zombie_png_len;
+extern unsigned char fogo_png[];
+extern unsigned int fogo_png_len;
 
 extern unsigned char mapa_jpg[];
 extern unsigned int mapa_jpg_len;
@@ -95,14 +97,19 @@ typedef struct {
 	int hitmap_in;
 } Body;
 
+#define MAX_FIRE 64
 typedef struct{
     Sprite zombie;
+    Sprite fogo;
     Sprite hero;
     Body player;
     Body enemy[MAX_ENEMIES];
 	int enemy_count;
     int pressed[SDLK_LAST];
     SDL_Surface *background;
+
+    Body fire[MAX_FIRE];
+	int fire_next;
     
     SDL_Surface *player_hud;
 
@@ -267,9 +274,9 @@ void body_move(Game *game, Body *body, int angle)
 		if(high>0x50) {
 			float k = high/256.;
 			int a = ATAN2(
-				high_x-body->pos.x,
-				high_y-body->pos.y
-			);
+					high_x-body->pos.x,
+					high_y-body->pos.y
+					);
 			if(fabs(angle - a) > 180) {
 				a += 360;
 			}
@@ -310,7 +317,7 @@ void body_draw(Game *game, Body *body, SDL_Surface *screen)
 		body->hitmap_in = 1;
 		body->hitmap_x = x;
 		body->hitmap_y = y;
-		game->hitmap[i] = MIN(game->hitmap[i] + body->health/2, 0x80);
+		game->hitmap[i] = MIN(game->hitmap[i] + body->health/4, 0xff);
 		if(game->hitmap[i]>64)
 			printf("hitmap x %d y %d = %d\n", x,y,game->hitmap[i] );
 	}
@@ -375,6 +382,46 @@ State menu_event(Menu *menu, SDL_Event *event) {
     return STATE_MENU;
 }
 
+void game_init(Game *game)
+{
+	memset(game->hitmap, 0, game->hitmap_len);
+
+	game->player.sprite = &game->hero;
+	game->player.max_vel = 10;
+	game->player.health = 
+	game->player.max_health = 100;
+	game->player.action = ACTION_MOVE;
+	game->player.frame = 0;
+	game->player.pos.y = 
+	game->player.pos.x = 0;
+
+    int i;
+    for(i=0;i<MAX_ENEMIES;i++) {
+		game->enemy[i].sprite = &game->zombie;
+		game->enemy[i].max_health = 25;
+		game->enemy[i].max_vel = 5;
+		game->enemy[i].health = 0;
+		game->enemy[i].action = ACTION_DEATH;
+		game->enemy[i].frame = game->enemy[i].sprite->frame_count;
+    }
+	game->enemy_count = 0;
+
+    for(i=0;i<MAX_FIRE;i++) {
+		game->fire[i].sprite = &game->fogo;
+		game->fire[i].health = 0;
+		game->fire[i].max_health = 1000;
+		game->fire[i].max_vel = 30;
+		game->fire[i].action = ACTION_MOVE;
+		game->fire[i].frame = 9;
+		game->fire[i].angle = 0;
+    }
+	game->fire_next = 0;
+
+    memset(game->pressed, 0, sizeof(game->pressed));
+
+    game->started = SDL_GetTicks();
+}
+
 State game_event(Game *game, SDL_Event *event) { 
     switch(event->type) {
         case SDL_QUIT:
@@ -383,17 +430,20 @@ State game_event(Game *game, SDL_Event *event) {
             switch(event->key.keysym.sym) {
                 case SDLK_ESCAPE:
                     return STATE_MENU;
+
+                case SDLK_r:
+                    game_init(game);
+                    break;
+
                 case SDLK_m:
                     break;
 
                 case SDLK_p:
                     playPunch();
-                    game->player.action = ACTION_ATTACK;
                     break;
 
                 case SDLK_s:
                     playShot();
-                    game->player.action = ACTION_MOVE;
                     break;
 
                 case SDLK_i:
@@ -431,14 +481,14 @@ void hud_timer(Game *game, char *timer) {
 }
 
 void hud_draw(Game *game, SDL_Surface *screen ){
-    int health = (game->player.health < 0) ? 0 : game->player.health; 
+    float health = MAX(0,game->player.health) / (float)game->player.max_health;
 
-    SDL_Rect src = {45, 15, health * 2, 15};
+    SDL_Rect src = {45, 15, 200 * health, 15};
     SDL_FillRect(screen, &src, 0x0000ffff);
-    SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 
     SDL_Rect hista_src = {45, 42, game->player.max_vel * 19 , 15};
     SDL_FillRect(screen, &hista_src, 0x00ff00ff);
+
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 
 
@@ -447,6 +497,20 @@ void hud_draw(Game *game, SDL_Surface *screen ){
     text_write_raw(screen, 300, 10, timer, white, 45);
 }
 
+void fire_shot(Game *game, Body *launcher)
+{
+	Body *shot = &(game->fire[game->fire_next]);
+	launcher->frame = (launcher->frame + 1) % launcher->sprite->frame_count;
+	shot->action = ACTION_MOVE;
+	shot->frame = 0;
+	shot->pos.x = launcher->pos.x;
+	shot->pos.y = launcher->pos.y;
+	shot->angle = launcher->angle;
+	shot->pos.x += cos(shot->angle*M_PI/180) * shot->max_vel;
+	shot->pos.y -= sin(shot->angle*M_PI/180) * shot->max_vel;
+	shot->health = shot->max_health;
+	game->fire_next = (game->fire_next+1) % MAX_FIRE;
+}
 
 State game_render(Game *game, SDL_Surface *screen)
 {
@@ -467,6 +531,16 @@ State game_render(Game *game, SDL_Surface *screen)
         body_move(game, &game->player, angle);
 
     }
+
+	// player fire
+	if(game->player.action != ACTION_DEATH) {
+		if(game->pressed[SDLK_RETURN] || game->pressed[SDLK_SPACE]) {
+			game->player.action = ACTION_ATTACK;
+			fire_shot(game, &game->player);
+		} else {
+			game->player.action = ACTION_MOVE;
+		}
+	}
 
 	// enemy move
 	for(i=0; i < game->enemy_count; i++) {
@@ -538,15 +612,22 @@ State game_render(Game *game, SDL_Surface *screen)
 			if(v<64) v = 0;
 			game->hitmap[x+y*game->hitmap_w] = v;
 		}
-		//printf("\n");
 	}
 	
     //SDL_UnlockSurface( screen );
 
 	// BODIES
-	Body *body[1+MAX_ENEMIES];
+	Body *body[1+MAX_ENEMIES+MAX_FIRE];
 	n=0;
 	body[n++] = &game->player;
+    for(i=0; i < MAX_FIRE; i++) {
+		if(game->fire[i].health>0) {
+			body[n++] = &game->fire[i];
+			body_move(game,&game->fire[i],game->fire[i].angle);
+			game->fire[i].health *= .95;
+			printf("%d) %d [%d, %d]\n", i, game->fire[i].health, game->fire[i].pos.x, game->fire[i].pos.y);
+		}
+	}
     for(i=0; i < game->enemy_count; i++,n++) {
 		body[n] = &game->enemy[i];
 
@@ -585,18 +666,13 @@ State game_render(Game *game, SDL_Surface *screen)
 
 	}
 	qsort(body, n, sizeof(body[0]), ysort_cmp); // blend ordering
-
     for(i=0;i<n;i++) {
         body_draw(game, body[i], screen);
     }
 
 	if(game->player.action == ACTION_DEATH) {
 		if(++game->player.frame >= game->player.sprite->frame_count) {
-			game->player.action = ACTION_MOVE;
-			game->player.health = game->player.max_health;
-			game->player.pos.x =
-			game->player.pos.y = 0;
-			memset(game->pressed,0,sizeof(game->pressed));
+			game_init(game);
 			state = STATE_GAMEOVER;
 		}
 	} else if(game->player.health <= 0) {
@@ -792,8 +868,6 @@ int main( int argc, char* args[] )
 	app.game.hitmap_h = app.screen->h/app.game.hitmap_dec;
 	app.game.hitmap_len = app.game.hitmap_w*app.game.hitmap_h;
 	app.game.hitmap = malloc(app.game.hitmap_len);
-	memset(app.game.hitmap, 0, app.game.hitmap_len);
-	printf("%d %d %d\n", app.game.hitmap_w,app.game.hitmap_h,app.game.hitmap_len);
 
     // player setup
     sprite_init(&app.game.hero, 
@@ -806,28 +880,14 @@ int main( int argc, char* args[] )
             114, 114, 13, // frame size and count
             zombie_png, zombie_png_len // source
             );
+    sprite_init(&app.game.fogo, 
+            0, 0, // origin
+            57, 57, 9, // frame size and count
+            fogo_png, fogo_png_len // source
+            );
 
-	app.game.player.sprite = &app.game.hero;
-	app.game.player.max_vel = 10;
-	app.game.player.health = 
-	app.game.player.max_health = 100;
-	app.game.player.action = ACTION_MOVE;
-	app.game.player.frame = 0;
-	app.game.player.pos.y = 
-	app.game.player.pos.x = 0;
+	game_init(&app.game);
 
-    int i;
-    for(i=0;i<MAX_ENEMIES;i++) {
-		app.game.enemy[i].sprite = &app.game.zombie;
-		app.game.enemy[i].max_health = 25;
-		app.game.enemy[i].max_vel = 5;
-		app.game.enemy[i].health = 0;
-		app.game.enemy[i].action = ACTION_DEATH;
-		app.game.enemy[i].frame = app.game.enemy[i].sprite->frame_count;
-    }
-
-	app.game.enemy_count = 0;
-    memset(app.game.pressed, 0, sizeof(app.game.pressed));
     app.state = STATE_MENU;
     handle_menu_music();
     app.menu.selected = 0; 
