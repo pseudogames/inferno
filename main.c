@@ -9,7 +9,7 @@
 #include "sound.h"
 #include "font.h"
 
-#define FPS 25
+#define FPS 35
 #define MAX_ENEMIES 3
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
@@ -476,8 +476,6 @@ int main( int argc, char* args[] )
                             app.state = STATE_QUIT;
                     }
             }
-
-
         }
 
         SDL_FillRect(app.screen, NULL, 0);
