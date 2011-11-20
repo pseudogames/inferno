@@ -8,9 +8,12 @@
 #include "sound.h"
 
 #define FPS 9
-#define MAX_ENEMIES 9
+#define MAX_ENEMIES 33
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
+
+#define RGBA_FORMAT 32,0x00ff0000,0x0000ff00,0x000000ff,0xff000000
+#define RGB_FORMAT  24,0x00ff0000,0x0000ff00,0x000000ff,0x00000000
 
 extern unsigned char sprite_png[];
 extern unsigned int sprite_png_len;
@@ -96,7 +99,7 @@ void sprite_origin_rect(Sprite *sprite, Action action, int frame, SDL_Rect *rect
     rect->h = sprite->frame_size.y;
 }
 
-#define ANGLE_STEP 45
+#define ANGLE_STEP 30
 #define ZOOM 1
 
 void sprite_rotated_rect(Sprite *sprite, Action action, int frame, int angle, SDL_Rect *rect)
@@ -112,33 +115,36 @@ void sprite_rotated_rect(Sprite *sprite, Action action, int frame, int angle, SD
 
 void sprite_gen_rotation(Sprite *sprite)
 {
-    rotozoomSurfaceSize(
-            sprite->frame_size.x,
-            sprite->frame_size.y,
-            45, // to maximize size
-            ZOOM,  // no zoom
-            &sprite->rotated_frame_size.x,
-            &sprite->rotated_frame_size.y
-            );
+	rotozoomSurfaceSize(
+		sprite->frame_size.x,
+		sprite->frame_size.y,
+		45, // to maximize size
+		ZOOM,  // no zoom
+		&sprite->rotated_frame_size.x,
+		&sprite->rotated_frame_size.y
+	);
 
     if(sprite->rotated)
         SDL_FreeSurface(sprite->rotated);
 
-    sprite->rotated = SDL_CreateRGBSurface(SDL_SWSURFACE | SDL_SRCALPHA, 
+    sprite->rotated = SDL_CreateRGBSurface(SDL_SWSURFACE, 
             sprite->rotated_frame_size.x * sprite->count,
             sprite->rotated_frame_size.y * ACTION_COUNT * 360/ANGLE_STEP,
-            32, 0,0,0,0);
+            RGBA_FORMAT);
     if(sprite->rotated == NULL) {
         fprintf(stderr, "CreateRGBSurface failed: %s\n", SDL_GetError());
         exit(1);
     }
-    printf("rotation cache size %d %d for %d angles\n", sprite->rotated->w, sprite->rotated->h, 360/ANGLE_STEP);
-    SDL_SetAlpha(sprite->rotated, SDL_SRCALPHA, 0xff);
+    printf("cache size %dx%d for %d angles\n", sprite->rotated->w, sprite->rotated->h, 360/ANGLE_STEP);
 
-    SDL_Surface *element = SDL_CreateRGBSurface(SDL_SWSURFACE | SDL_SRCALPHA, 
+    SDL_Surface *element = SDL_CreateRGBSurface(SDL_SWSURFACE, 
             sprite->frame_size.x, 
             sprite->frame_size.y,
-            32, 0,0,0,0);
+            RGBA_FORMAT);
+
+	SDL_SetAlpha(sprite->source,0,0xff);
+	SDL_SetAlpha(element,0,0xff);
+	SDL_SetAlpha(sprite->rotated,SDL_SRCALPHA,0xff);
 
     int frame, action, angle;
     for(action=0; action<ACTION_COUNT; action++) {
@@ -148,12 +154,13 @@ void sprite_gen_rotation(Sprite *sprite)
             for(angle=0; angle<360; angle+=ANGLE_STEP) {
                 SDL_Rect dst;
                 sprite_rotated_rect(sprite, action, frame, angle, &dst);
-                SDL_FillRect(element, NULL, 0xff0000);
+                SDL_FillRect(element, NULL, 0x00000000);
                 SDL_BlitSurface( sprite->source, &src, element, NULL );
                 SDL_Surface *rotozoom = rotozoomSurface(element, angle, ZOOM, SMOOTHING_ON);
+				SDL_SetAlpha(rotozoom,0,0);
+				SDL_SetColorKey(rotozoom,0,0);
                 dst.x += dst.w/2 - rotozoom->w/2;
                 dst.y += dst.h/2 - rotozoom->h/2; // center
-                SDL_SetAlpha(rotozoom,SDL_SRCALPHA,0xff);
                 SDL_BlitSurface(rotozoom, NULL, sprite->rotated, &dst );
                 SDL_FreeSurface(rotozoom);
             }
@@ -343,7 +350,7 @@ int main( int argc, char* args[] )
 
 #if 0
     { // window manager
-        SDL_Surface* icon = SDL_CreateRGBSurface(SDL_SWSURFACE, 64, 64, 32, 0,0,0,0);
+        SDL_Surface* icon = SDL_CreateRGBSurface(SDL_SWSURFACE, 64, 64, RGB_FORMAT);
         SDL_Rect src = {32,32,64,64};
         SDL_Rect dst = {0,0,0,0};
         SDL_BlitSurface( sprite, &src, icon, &dst );
@@ -359,7 +366,7 @@ int main( int argc, char* args[] )
     // effects manager 
     loadEffects();
 
-    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
+    app.screen = SDL_SetVideoMode( 1024, 768, 24, SDL_SWSURFACE );
 
     // player setup
     sprite_init(&app.game.zombie, 
@@ -391,6 +398,7 @@ int main( int argc, char* args[] )
 
     // main loop
 
+	app.state = STATE_GAME;
     while(app.state != STATE_QUIT) {
         Uint32 start = SDL_GetTicks();
         SDL_Event event;
