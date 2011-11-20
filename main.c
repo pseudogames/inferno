@@ -128,6 +128,7 @@ typedef struct{
 	int heatmap;
 
     Uint32 started; 
+    Uint32 elapsed; 
 } Game;
 
 typedef struct{
@@ -350,7 +351,7 @@ State gameover_event(Credit *credit, SDL_Event *event) {
                     return STATE_MENU;
             }
     }
-    return STATE_CREDIT;
+    return STATE_GAMEOVER;
 }
 
 State menu_event(Menu *menu, SDL_Event *event) { 
@@ -471,6 +472,18 @@ void hud_setup(Game *game, SDL_Surface *screen){
    game->player_hud = IMG_Load_RW( SDL_RWFromMem(player_hud_png, player_hud_png_len), 1 );
 }
 
+void hud_timer(Game *game, char *timer) { 
+
+    Uint32 elapsed = game->elapsed;
+    Uint32 miliseconds = elapsed % 1000;
+    Uint32 time = elapsed / 1000;
+    Uint32 seconds = time % 60;
+    Uint32 minutes = time % 3600 / 60;
+    Uint32 hours = time / 3600;
+
+    sprintf(timer, "%02d:%02d:%02d::%d", hours, minutes, seconds, miliseconds );
+}
+
 void hud_draw(Game *game, SDL_Surface *screen ){
     float health = MAX(0,game->player.health) / (float)game->player.max_health;
 
@@ -482,18 +495,9 @@ void hud_draw(Game *game, SDL_Surface *screen ){
 
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 
-    Uint32 ticks = SDL_GetTicks();
-    Uint32 elapsed = ticks - game->started;
 
-    Uint32 miliseconds = elapsed % 1000;
-    Uint32 time = elapsed / 1000;
-    Uint32 seconds = time % 60;
-    Uint32 minutes = time % 3600 / 60;
-    Uint32 hours = time / 3600;
-
-    char timer[30];
-    sprintf(timer, "%02d:%02d:%02d::%d", hours, minutes, seconds, miliseconds );
-
+    char timer[40];
+    hud_timer(game, &timer[0]);
     text_write_raw(screen, 300, 10, timer, white, 45);
 }
 
@@ -514,6 +518,9 @@ void fire_shot(Game *game, Body *launcher)
 
 State game_render(Game *game, SDL_Surface *screen)
 {
+    Uint32 ticks = SDL_GetTicks();
+    game->elapsed = ticks - game->started;
+
 	State state = STATE_GAME;
     // move player
     int i,n,x,y;
@@ -728,6 +735,11 @@ void gameover_render(Game *game, SDL_Surface *screen)
     /*game_render(game, screen);*/
     SDL_BlitSurface( game->background, NULL, screen, NULL );
     text_write_raw(screen, 165, 250, "GAME OVER", red, 120);
+
+    char timer[40];
+    hud_timer(game, &timer[0]);
+    text_write_raw(screen, 100, 400, "You survived, but not enough", white, 45);
+    text_write_raw(screen, 530, 450, timer, white, 45);
     /*text_write_raw(screen, 200, 250, "programming", red, 36);*/
         /*text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);*/
         /*text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);*/
@@ -950,7 +962,7 @@ int main( int argc, char* args[] )
             case STATE_GAMEOVER: 
                 gameover_render(&app.game, app.screen); 
                 if(last_state != STATE_CREDIT){
-                    halt_music();
+                    /*halt_music();*/
                     /*handle_gameover_music(); */
                 }
                 break;
