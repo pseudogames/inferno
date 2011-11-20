@@ -418,6 +418,7 @@ int main( int argc, char* args[] )
     }
 
     memset(app.game.pressed, 0, sizeof(app.game.pressed));
+    app.state = STATE_MENU;
     app.menu.selected = 0; 
     // main loop
 

@@ -3,7 +3,7 @@ CFLAGS=-g
 all: inferno music.ogg
 
 clean:
-	rm -fv inferno inferno.exe sprite.png sprite.c main.o sprite.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o m60.wav pick.wav shot.wav punch0.wav punch1.wav punch2.wav punch3.wav punch4.wav acid.ttf adler.ttf
+	rm -fv inferno inferno.exe sprite.png sprite.c main.o sprite.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o m60.wav pick.wav shot.wav punch0.wav punch1.wav punch2.wav punch3.wav punch4.wav acid.ttf adler.ttf acid.o adler.o acid.c adler.c
 
 
 # FIXME troll mode
