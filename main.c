@@ -10,7 +10,7 @@
 #include "font.h"
 
 #define FPS 9
-#define MAX_ENEMIES 333
+#define MAX_ENEMIES 33
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
@@ -293,6 +293,12 @@ State game_event(Game *game, SDL_Event *event) {
     return STATE_GAME;
 }
 
+int ysort_cmp(const void *a, const void *b)
+{
+	Body *aa = *(Body**)a, *bb = *(Body**)b;
+	return (aa->pos.y > bb->pos.y) - (aa->pos.y < bb->pos.y);
+}
+
 void game_render(Game *game, SDL_Surface *screen)
 {
     // move player
@@ -316,22 +322,17 @@ void game_render(Game *game, SDL_Surface *screen)
 		}
     }
 
-
 	// render
-#if 0
-	int ysort[1+MAX_ENEMIES];
+	Body *ysort[1+MAX_ENEMIES];
     for(i=0;i<MAX_ENEMIES;i++) {
-		ysort[i] = &enemy[i];
+		ysort[i] = &game->enemy[i];
 	}
-	ysort[MAX_ENEMIES] = &player;
-	
-	qsort
-#endif
+	ysort[i++] = &game->player;
+	qsort(ysort, sizeof(ysort)/sizeof(ysort[0]), sizeof(ysort[0]), ysort_cmp);
 
-    for(i=0;i<MAX_ENEMIES;i++) {
-        body_draw(&game->enemy[i], screen);
+    for(i=0;i<1+MAX_ENEMIES;i++) {
+        body_draw(ysort[i], screen);
     }
-    body_draw(&game->player, screen);
 }
 
 void menu_render(Menu *menu, SDL_Surface *screen)
