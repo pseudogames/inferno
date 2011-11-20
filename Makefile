@@ -50,10 +50,10 @@ main.o: main.c
 	gcc $(CFLAGS) $< `sdl-config --cflags` -c -o $@
 
 sound.o: sound.c
-	gcc $< `sdl-config --cflags` -c -o $@
+	gcc $(CFLAGS) $< `sdl-config --cflags` -c -o $@
 
 font.o: font.c
-	gcc $< `sdl-config --cflags` -c -o $@
+	gcc $(CFLAGS) $< `sdl-config --cflags` -c -o $@
 
 
 acid.c: ~/Dropbox/inferno/acid.ttf
