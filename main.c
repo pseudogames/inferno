@@ -71,7 +71,6 @@ typedef enum {
 
 typedef enum { 
     MENU_START = 0,
-    MENU_CONTINUE,
     MENU_CREDIT, 
     MENU_QUIT,
     MENU_COUNT
@@ -720,9 +719,8 @@ void menu_render(Menu *menu, SDL_Surface *screen)
 
     text_write_raw(screen, 300, 100, "INFERNO", red, 96);
     text_write(screen, 100, 250, "new game", menu->selected ^ 0);
-    text_write(screen, 100, 350, "continue game", menu->selected ^ 1);
-    text_write(screen, 100, 450, "credits", menu->selected ^ 2);
-    text_write(screen, 100, 550, "exit", menu->selected ^ 3);
+    text_write(screen, 100, 350, "credits", menu->selected ^ 1);
+    text_write(screen, 100, 450, "exit", menu->selected ^ 2);
 }
 
 void gameover_render(Game *game, SDL_Surface *screen)
@@ -826,7 +824,7 @@ int toggle_fullscreen(int fullscreen) {
 
 int main( int argc, char* args[] )
 {
-	// keyboard conf
+	// keyboard con&f
 	FILE *fp = fopen("inferno.ini", "r");
 	if(fp) {
 		fscanf(fp,"key_start=%d\n", &key_start);
@@ -962,6 +960,7 @@ int main( int argc, char* args[] )
             case STATE_GAME:   
                 app.state = game_render  (&app.game,   app.screen); 
                 if(last_state != STATE_GAME){
+                    game_init(&app.game);
                     app.game.started = SDL_GetTicks();
                     halt_music();
                     handle_ingame_music(); 
