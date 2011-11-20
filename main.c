@@ -71,8 +71,10 @@ typedef struct {
     Action action;
     int frame;
     Sprite *sprite;
+	int hitmap_x;
+	int hitmap_y;
+	int hitmap_in;
 } Body;
-
 
 typedef struct{
     Sprite zombie;
@@ -82,6 +84,11 @@ typedef struct{
 	int enemy_count;
     int pressed[SDLK_LAST];
     SDL_Surface *background;
+	int hitmap_dec;
+	int hitmap_w;
+	int hitmap_h;
+	int hitmap_len;
+	Uint8 *hitmap;
 } Game;
 
 typedef struct{
@@ -199,19 +206,53 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
 
 
 
-void body_move(Body *body, int angle)
+void body_move(Game *game, Body *body, int angle)
 {
-    float f = .2, k = .8;
+	if(body->action == ACTION_DEATH)
+		return;
+    if(body->hitmap_in) {
+		int x0 = MAX(body->hitmap_x-1, 0);
+		int y0 = MAX(body->hitmap_y-1, 0);
+		int x1 = MIN(body->hitmap_x+1, game->hitmap_w-1);
+		int y1 = MIN(body->hitmap_y+1, game->hitmap_h-1);
+		int x,y;
+		int high_x, high_y, high = 0;
+		for(y=y0; y<=y1; y++) {
+			for(x=x0; x<=x1; x++) {
+				int v = game->hitmap[x+y*game->hitmap_w];
+				if(v > high) {
+					high_x = x;
+					high_y = y;
+					high = v;
+				}
+			}
+		}
+		if(high>48) {
+			float k = high/256.;
+			int a = ATAN2(
+				high_x-body->pos.x,
+				high_y-body->pos.y
+			);
+			if(fabs(angle - a) > 180) {
+				a += 360;
+			}
+			angle = angle*(1-k) * k*a;
+		}
+		if(high>72) {
+			body->health *= .90;
+		}
+	}
+
     if(fabs(body->angle - angle) > 180) {
 		angle += 360;
 	}
+    float f = .2;
 	body->angle = (int)(720 + body->angle * (1-f) + angle * f) % 720;
     float a = body->angle * M_PI / 180;
     body->pos.x += cos(a) * body->max_vel;
     body->pos.y -= sin(a) * body->max_vel;
     body->frame = (body->frame+(rand()%2)) % body->sprite->frame_count;
 
-    // TODO collision
 }
 
 void body_draw(Game *game, Body *body, SDL_Surface *screen)
@@ -221,6 +262,21 @@ void body_draw(Game *game, Body *body, SDL_Surface *screen)
 		screen->h/2 - body->sprite->frame_size.y/2 + body->pos.y - game->player.pos.y,
 		0,0
 	};
+	int x = dst.x/game->hitmap_dec;
+	int y = dst.y/game->hitmap_dec;
+	body->hitmap_in = 0;
+	if(x>0 && x<game->hitmap_w &&
+	   y>0 && y<game->hitmap_h) {
+		int i = x+y*game->hitmap_w;
+		body->hitmap_in = 1;
+		body->hitmap_x = x;
+		body->hitmap_y = y;
+		if(game->hitmap[i]<64) {
+			game->hitmap[i] += 8;
+		} else
+			printf("hitmap x %d y %d = %d\n", x,y,game->hitmap[i] );
+	}
+
     SDL_Rect src;
     sprite_rotated_rect(body->sprite, body->action, body->frame, body->angle, &src);
     SDL_BlitSurface( body->sprite->rotated, &src, screen, &dst );
@@ -319,7 +375,7 @@ void game_render(Game *game, SDL_Surface *screen)
     float dy=game->pressed[SDLK_DOWN]-game->pressed[SDLK_UP];
     if(fabs(dx)>0.1||fabs(dy)>0.1) {
         int angle = ATAN2(dx,dy);
-        body_move(&game->player, angle);
+        body_move(game, &game->player, angle);
 
     }
 
@@ -329,11 +385,11 @@ void game_render(Game *game, SDL_Surface *screen)
 			game->player.pos.x-game->enemy[i].pos.x,
 			game->player.pos.y-game->enemy[i].pos.y
 		);
-		body_move(&game->enemy[i], angle+(rand()%60)-30);
+		body_move(game, &game->enemy[i], angle+(rand()%60)-30);
 	}
 
     // CAMERA 
-	printf("========\n");
+	//printf("========\n");
 	int wsx0 = game->player.pos.x - screen->w/2;
 	int wsy0 = game->player.pos.y - screen->h/2;
 	int wsx1 = game->player.pos.x + screen->w/2;
@@ -364,13 +420,29 @@ void game_render(Game *game, SDL_Surface *screen)
 			int six1 = wix1 - wsx1;
 			int siy1 = wiy1 - wsy1;
 
-			printf("a) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx0,wsy0, wmx0,wmy0, wix0,wiy0, mix0,miy0, six0,siy0);
-			printf("b) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx1,wsy1, wmx1,wmy1, wix1,wiy1, mix1,miy1, six1,siy1);
+			//printf("a) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx0,wsy0, wmx0,wmy0, wix0,wiy0, mix0,miy0, six0,siy0);
+			//printf("b) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx1,wsy1, wmx1,wmy1, wix1,wiy1, mix1,miy1, six1,siy1);
 			SDL_Rect src = {mix0, miy0, mix1-mix0, miy1-miy0};
 			SDL_Rect dst = {six0, siy0, six1-six0, siy1-siy0};
 			SDL_BlitSurface( game->background, &src, screen, &dst );
 		}
 	}
+
+
+    //SDL_LockSurface( screen );
+
+	for(y=0; y<game->hitmap_h; y++) {
+		Uint32 *p = (Uint32*)(((Uint8*)screen->pixels)+screen->pitch*y*game->hitmap_dec);
+		for(x=0; x<game->hitmap_w; x++,p+=game->hitmap_dec) {
+			game->hitmap[x+y*game->hitmap_w] = ((*p) & screen->format->Rmask) >> screen->format->Rshift;
+			//printf("%d, ", (int)game->hitmap[x+y*game->hitmap_w]);
+		}
+		//printf("\n");
+	}
+	
+    //SDL_UnlockSurface( screen );
+
+	
 
 	// BODIES
 	Body *body[1+MAX_ENEMIES];
@@ -387,11 +459,12 @@ void game_render(Game *game, SDL_Surface *screen)
 				int r = MAX(screen->w,screen->h);
 				body[n]->pos.x = game->player.pos.x + cos(a) * r;
 				body[n]->pos.y = game->player.pos.y + sin(a) * r;
-				printf("%d %d\n",body[n]->pos.x, body[n]->pos.y);
+				printf("ressurect %d %d\n",body[n]->pos.x, body[n]->pos.y);
 			}
 		} else if(body[n]->health <= 0) {
 			body[n]->action = ACTION_DEATH;
 			body[n]->frame = 0;
+			body[n]->angle = 0;
 		}
 
 	}
@@ -465,15 +538,22 @@ int main( int argc, char* args[] )
 
     /*handle_menu_music();*/
     
-    SDL_Surface *tmp_bg = IMG_Load_RW( SDL_RWFromMem(mapa_jpg, mapa_jpg_len), 1 );
+    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE );
 
+    SDL_Surface *tmp_bg = IMG_Load_RW( SDL_RWFromMem(mapa_jpg, mapa_jpg_len), 1 );
     app.background = zoomSurface(tmp_bg, 2, 2, 1);
     app.menu.background = app.background;
     app.game.background = app.background;
-
     SDL_FreeSurface(tmp_bg);
 
-    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE );
+
+	app.game.hitmap_dec = 4;
+	app.game.hitmap_w = app.screen->w/app.game.hitmap_dec;
+	app.game.hitmap_h = app.screen->h/app.game.hitmap_dec;
+	app.game.hitmap_len = app.game.hitmap_w*app.game.hitmap_h;
+	app.game.hitmap = malloc(app.game.hitmap_len);
+	memset(app.game.hitmap, 0, app.game.hitmap_len);
+	printf("%d %d %d\n", app.game.hitmap_w,app.game.hitmap_h,app.game.hitmap_len);
 
     // player setup
     sprite_init(&app.game.hero, 
@@ -503,7 +583,7 @@ int main( int argc, char* args[] )
 		app.game.enemy[i].max_vel = 5;
 		app.game.enemy[i].health = 0;
 		app.game.enemy[i].action = ACTION_DEATH;
-		app.game.enemy[i].frame = 0;
+		app.game.enemy[i].frame = app.game.enemy[i].sprite->frame_count;
     }
 
 	app.game.enemy_count = 0;
@@ -561,7 +641,7 @@ int main( int argc, char* args[] )
         last_state = app.state;
     }
 
-    // TODO free surfaces, like SDL_FreeSurface( sprite );
+    // TODO free surfaces, like SDL_FreeSurface( sprite ); hitmap
 
     SDL_Quit();
 
