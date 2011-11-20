@@ -396,27 +396,32 @@ int main( int argc, char* args[] )
         SDL_Event event;
         if( SDL_PollEvent( &event ) )
         {
-            switch(event.type) {
-                case SDL_QUIT:
-                    app.state = STATE_QUIT;
-                case SDLK_q:
-                    return STATE_QUIT;
-            }
             switch(app.state) {
                 case STATE_GAME:   app.state = game_event  (&app.game,   &event); break;
                 case STATE_MENU:   app.state = menu_event  (&app.menu,   &event); break;
                 case STATE_CREDIT: app.state = credit_event(&app.credit, &event); break;
             }
+
+            switch(event.type) {
+                case SDL_QUIT:
+                    app.state = STATE_QUIT;
+                    break;
+                case SDL_KEYDOWN:
+                    switch(event.key.keysym.sym) {
+                        case SDLK_q:
+                            app.state = STATE_QUIT;
+                    }
+            }
+
+
         }
 
         SDL_FillRect(app.screen, NULL, 0);
-
         switch(app.state) {
             case STATE_GAME:   game_render  (&app.game,   app.screen); break;
             case STATE_MENU:   menu_render  (&app.menu,   app.screen); break;
             case STATE_CREDIT: credit_render(&app.credit, app.screen); break;
         }
-
         SDL_Flip( app.screen );
 
         timing_control(start);
