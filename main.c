@@ -411,7 +411,6 @@ int main( int argc, char* args[] )
     app.menu.selected = 0; 
     // main loop
 
-	app.state = STATE_GAME;
     while(app.state != STATE_QUIT) {
         Uint32 start = SDL_GetTicks();
         SDL_Event event;
