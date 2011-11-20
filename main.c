@@ -287,6 +287,9 @@ void body_move(Game *game, Body *body, int angle)
 		if(high>0x90) {
 			body->health -= high/16;
 			v *= .25;
+            if (body->health < 0){
+                body->health = 0;
+            }
 		}
 	}
 
@@ -341,13 +344,58 @@ State credit_event(Credit *credit, SDL_Event *event) {
     return STATE_CREDIT;
 }
 
-State gameover_event(Credit *credit, SDL_Event *event) { 
+void game_init(Game *game)
+{
+	memset(game->hitmap, 0, game->hitmap_len);
+
+	game->player.sprite = &game->hero;
+	game->player.ang_vel = .2;
+	game->player.max_vel = 10;
+	game->player.health = 
+	game->player.max_health = 100;
+	game->player.action = ACTION_MOVE;
+	game->player.frame = 0;
+	game->player.pos.y = 
+	game->player.pos.x = 0;
+
+	game->body_count = 0;
+
+    int i;
+    for(i=0;i<MAX_ENEMIES;i++) {
+		game->enemy[i].sprite = &game->zombie;
+		game->enemy[i].max_health = 25;
+		game->enemy[i].ang_vel = .05;
+		game->enemy[i].max_vel = 5;
+		game->enemy[i].health = 0;
+		game->enemy[i].action = ACTION_DEATH;
+		game->enemy[i].frame = game->enemy[i].sprite->frame_count;
+    }
+	game->enemy_count = 0;
+
+    for(i=0;i<MAX_FIRE;i++) {
+		game->fire[i].sprite = &game->fogo;
+		game->fire[i].health = 0;
+		game->fire[i].max_health = 1000;
+		game->fire[i].ang_vel = .1;
+		game->fire[i].max_vel = 30;
+		game->fire[i].action = ACTION_MOVE;
+		game->fire[i].frame = 9;
+		game->fire[i].angle = 0;
+    }
+	game->fire_next = 0;
+
+    memset(game->pressed, 0, sizeof(game->pressed));
+
+    game->started = SDL_GetTicks();
+}
+State gameover_event(Game *game, SDL_Event *event) { 
     switch(event->type) {
         case SDL_KEYDOWN:
             switch(event->key.keysym.sym) {
                 case SDLK_ESCAPE:
                 case SDLK_SPACE:
                 case SDLK_RETURN:
+                    game_init(game);
                     return STATE_MENU;
             }
     }
@@ -383,48 +431,6 @@ State menu_event(Menu *menu, SDL_Event *event) {
     return STATE_MENU;
 }
 
-void game_init(Game *game)
-{
-	memset(game->hitmap, 0, game->hitmap_len);
-
-	game->player.sprite = &game->hero;
-	game->player.ang_vel = .2;
-	game->player.max_vel = 10;
-	game->player.health = 
-	game->player.max_health = 100;
-	game->player.action = ACTION_MOVE;
-	game->player.frame = 0;
-	game->player.pos.y = 
-	game->player.pos.x = 0;
-
-    int i;
-    for(i=0;i<MAX_ENEMIES;i++) {
-		game->enemy[i].sprite = &game->zombie;
-		game->enemy[i].max_health = 25;
-		game->enemy[i].ang_vel = .05;
-		game->enemy[i].max_vel = 5;
-		game->enemy[i].health = 0;
-		game->enemy[i].action = ACTION_DEATH;
-		game->enemy[i].frame = game->enemy[i].sprite->frame_count;
-    }
-	game->enemy_count = 0;
-
-    for(i=0;i<MAX_FIRE;i++) {
-		game->fire[i].sprite = &game->fogo;
-		game->fire[i].health = 0;
-		game->fire[i].max_health = 1000;
-		game->fire[i].ang_vel = .1;
-		game->fire[i].max_vel = 30;
-		game->fire[i].action = ACTION_MOVE;
-		game->fire[i].frame = 9;
-		game->fire[i].angle = 0;
-    }
-	game->fire_next = 0;
-
-    memset(game->pressed, 0, sizeof(game->pressed));
-
-    game->started = SDL_GetTicks();
-}
 
 State game_event(Game *game, SDL_Event *event) { 
     switch(event->type) {
@@ -514,8 +520,8 @@ void fire_shot(Game *game, Body *launcher)
 	shot->pos.x = launcher->pos.x;
 	shot->pos.y = launcher->pos.y;
 	shot->angle = launcher->angle;
-	shot->pos.x += cos(shot->angle*M_PI/180) * shot->max_vel;
-	shot->pos.y -= sin(shot->angle*M_PI/180) * shot->max_vel;
+	shot->pos.x += cos(shot->angle*M_PI/180) * shot->max_vel *2;
+	shot->pos.y -= sin(shot->angle*M_PI/180) * shot->max_vel *2;
 	shot->health = shot->max_health;
 	game->fire_next = (game->fire_next+1) % MAX_FIRE;
 }
@@ -682,7 +688,6 @@ State game_render(Game *game, SDL_Surface *screen)
 
 	if(game->player.action == ACTION_DEATH) {
 		if(++game->player.frame >= game->player.sprite->frame_count) {
-			game_init(game);
 			state = STATE_GAMEOVER;
 		}
 	} else if(game->player.health <= 0) {
@@ -746,6 +751,13 @@ void gameover_render(Game *game, SDL_Surface *screen)
     hud_timer(game, &timer[0]);
     text_write_raw(screen, 100, 400, "You survived, but not enough", white, 45);
     text_write_raw(screen, 530, 450, timer, white, 45);
+
+
+    char s[50]; 
+    sprintf(s, "You killed %d zombies, well done", game->body_count);
+
+    text_write_raw(screen, 100, 600, s, white, 45);
+
     /*text_write_raw(screen, 200, 250, "programming", red, 36);*/
         /*text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);*/
         /*text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);*/
@@ -919,7 +931,7 @@ int main( int argc, char* args[] )
                 case STATE_GAME: app.state = game_event  (&app.game,   &event); break;
                 case STATE_MENU:   app.state = menu_event  (&app.menu,   &event); break;
                 case STATE_CREDIT: app.state = credit_event(&app.credit, &event); break;
-                case STATE_GAMEOVER: app.state = gameover_event(&app.credit, &event); break;
+                case STATE_GAMEOVER: app.state = gameover_event(&app.game, &event); break;
             }
 
             switch(event.type) {
