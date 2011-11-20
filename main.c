@@ -9,8 +9,8 @@
 #include "sound.h"
 #include "font.h"
 
-#define FPS 9
-#define MAX_ENEMIES 333
+#define FPS 25
+#define MAX_ENEMIES 3
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
@@ -19,6 +19,9 @@
 
 extern unsigned char sprite_png[];
 extern unsigned int sprite_png_len;
+
+extern unsigned char mapa_jpg[];
+extern unsigned int mapa_jpg_len;
 
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
@@ -73,11 +76,13 @@ typedef struct{
     Body player;
     Body enemy[MAX_ENEMIES];
     int pressed[SDLK_LAST];
+    SDL_Surface *background;
 } Game;
 
 typedef struct{
     SDL_Surface *image; 
     MenuItem selected;
+    SDL_Surface *background;
 } Menu;
 
 typedef struct{
@@ -90,6 +95,7 @@ typedef struct{
     Menu menu;
     Credit credit;
     State state;
+    SDL_Surface *background;
 } App;
 
 
@@ -185,6 +191,8 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
     sprite->rotated = NULL;
     sprite_gen_rotation(sprite);
 }
+
+
 
 void body_init(Body *body, Sprite *sprite, int max_health, float max_vel, int x, int y)
 {
@@ -327,15 +335,30 @@ void game_render(Game *game, SDL_Surface *screen)
 
     qsort
 #endif
+    
+    // CAMERA 
+    
+    SDL_Rect src = {game->player.pos.x, game->player.pos.y, screen->w, screen->h};
 
-        for(i=0;i<MAX_ENEMIES;i++) {
-            body_draw(&game->enemy[i], screen);
-        }
+    SDL_BlitSurface( game->background, &src, screen, NULL );
+
+    for(i=0;i<MAX_ENEMIES;i++) {
+        body_draw(&game->enemy[i], screen);
+    }
     body_draw(&game->player, screen);
 }
 
 void menu_render(Menu *menu, SDL_Surface *screen)
 {
+   
+    Uint32 ticks = SDL_GetTicks();
+
+    int x = cos(ticks/15000.0)*512 + 512;
+    int y = sin(ticks/15000.0)*512 + 512;
+
+    SDL_Rect src = {x, y, screen->w, screen->h};
+    SDL_BlitSurface( menu->background, &src, screen, NULL );
+
     text_write(screen, 300, 10, "INFERNO", 0);
     text_write(screen, 100, 200, "new game", menu->selected ^ 0);
     text_write(screen, 100, 300, "continue game", menu->selected ^ 1);
@@ -388,6 +411,14 @@ int main( int argc, char* args[] )
     loadEffects();
 
     handleMusic();
+    
+    SDL_Surface *tmp_bg = IMG_Load_RW( SDL_RWFromMem(mapa_jpg, mapa_jpg_len), 1 );
+
+    app.background = zoomSurface(tmp_bg, 2, 2, 1);
+    app.menu.background = app.background;
+    app.game.background = app.background;
+
+    SDL_FreeSurface(tmp_bg);
 
     app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_SWSURFACE );
 
@@ -411,7 +442,7 @@ int main( int argc, char* args[] )
                 &app.game.enemy[i],
                 &app.game.zombie,
                 25, // health
-                5, // speed
+                7, // speed
                 rand() % app.screen->w, // x
                 rand() % app.screen->h // y
                 );
