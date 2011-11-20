@@ -39,6 +39,9 @@ extern unsigned int music_menu_ogg_len;
 extern unsigned char music_ingame_ogg[];
 extern unsigned int music_ingame_ogg_len;
 
+extern unsigned char music_credit_ogg[];
+extern unsigned int music_credit_ogg_len;
+
 int punchChannel, shotChannel, pickChannel  = -1;
 SDL_RWops *rw = NULL;
 
@@ -78,7 +81,6 @@ void play_menu_select() {
 void play_menu_confirm() {
     Mix_PlayChannel(-1, menu_confirm_ptr, 0);
 }
-
 void initMusic() { 
     a.rate = 22050;
     a.format = AUDIO_S16; /* 16-bit stereo */
@@ -100,7 +102,13 @@ void handle_menu_music() {
 }
 
 void handle_ingame_music() { 
-    rw = SDL_RWFromMem(music_ingame_ogg, music_ingame_ogg_len); 
+    rw = SDL_RWFromMem(music_ingame_ogg, music_ingame_ogg_len);
+    music = Mix_LoadMUS_RW(rw);
+    Mix_PlayMusic(music, -1);
+}
+
+void handle_credit_music() { 
+    rw = SDL_RWFromMem(music_credit_ogg, music_credit_ogg_len);
     music = Mix_LoadMUS_RW(rw);
     Mix_PlayMusic(music, -1);
 }

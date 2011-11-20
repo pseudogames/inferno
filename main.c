@@ -92,6 +92,7 @@ typedef struct{
 
 typedef struct{
     SDL_Surface *image; 
+    SDL_Surface *background;
 } Credit;
 
 typedef struct{
@@ -412,7 +413,7 @@ void menu_render(Menu *menu, SDL_Surface *screen)
     SDL_Rect src = {x, y, screen->w, screen->h};
     SDL_BlitSurface( menu->background, &src, screen, NULL );
 
-    text_write(screen, 300, 50, "INFERNO", 0);
+    text_write(screen, 300, 100, "INFERNO", 0);
     text_write(screen, 100, 250, "new game", menu->selected ^ 0);
     text_write(screen, 100, 350, "continue game", menu->selected ^ 1);
     text_write(screen, 100, 450, "credits", menu->selected ^ 2);
@@ -421,7 +422,19 @@ void menu_render(Menu *menu, SDL_Surface *screen)
 
 void credit_render(Credit *credit, SDL_Surface *screen)
 {
-    // TODO
+    Uint32 ticks = SDL_GetTicks();
+
+    int x = (1+cos(ticks/15000.0))*(credit->background->w/2-screen->w/2);
+    int y = (1+sin(ticks/15000.0))*(credit->background->h/2-screen->h/2);
+
+    SDL_Rect src = {x, y, screen->w, screen->h};
+    SDL_BlitSurface( credit->background, &src, screen, NULL );
+
+    text_write(screen, 300, 100, "Credits", 0);
+    text_write(screen, 100, 250, "new game", 0);
+    text_write(screen, 100, 350, "continue game", 1);
+    text_write(screen, 100, 450, "credits", 2);
+    text_write(screen, 100, 550, "exit", 3);
 }
 
 void timing_control(Uint32 start) { 
@@ -470,6 +483,7 @@ int main( int argc, char* args[] )
     app.background = zoomSurface(tmp_bg, 2, 2, 1);
     app.menu.background = app.background;
     app.game.background = app.background;
+    app.credit.background = app.background;
 
     SDL_FreeSurface(tmp_bg);
 
@@ -551,10 +565,16 @@ int main( int argc, char* args[] )
                 if(last_state != STATE_MENU){
                     halt_music();
                     handle_menu_music(); 
-                break;
                 }
+                break;
 
-            case STATE_CREDIT: credit_render(&app.credit, app.screen); break;
+            case STATE_CREDIT: 
+                credit_render(&app.credit, app.screen); 
+                if(last_state != STATE_CREDIT){
+                    halt_music();
+                    handle_credit_music(); 
+                }
+                break;
         }
         SDL_Flip( app.screen );
         timing_control(start);
