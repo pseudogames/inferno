@@ -40,8 +40,8 @@ extern unsigned int creditos_jpg_len;
 extern unsigned char player_hud_png[];
 extern unsigned int player_hud_png_len;
 
-extern unsigned char stats_hud_png[];
-extern unsigned int stats_hud_png_len;
+extern unsigned char caveira_png[];
+extern unsigned int caveira_png_len;
 
 typedef struct { int x,y; } point;
 typedef struct { float x,y; } vec;
@@ -113,7 +113,6 @@ typedef struct{
 	int fire_next;
     
     SDL_Surface *player_hud;
-
     SDL_Surface *stats_hud;
 
     int body_count; 
@@ -476,6 +475,7 @@ int ysort_cmp(const void *a, const void *b)
 
 void hud_setup(Game *game, SDL_Surface *screen){
    game->player_hud = IMG_Load_RW( SDL_RWFromMem(player_hud_png, player_hud_png_len), 1 );
+   game->stats_hud = IMG_Load_RW( SDL_RWFromMem(caveira_png, caveira_png_len), 1 );
 }
 
 void hud_timer(Game *game, char *timer) { 
@@ -500,6 +500,9 @@ void hud_draw(Game *game, SDL_Surface *screen ){
     SDL_FillRect(screen, &hista_src, 0x00ff00ff);
 
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
+
+    SDL_Rect skull_src = {screen->w - game->stats_hud->w - 130,0 , 0};
+    SDL_BlitSurface( game->stats_hud, NULL, screen, &skull_src);
 
 
     char timer[40];

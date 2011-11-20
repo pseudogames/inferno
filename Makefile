@@ -77,6 +77,9 @@ player_hud.png: ~/Dropbox/inferno/player_hud.png
 stats_hud.png: ~/Dropbox/inferno/stats_hud.png
 	cp $< $@
 
+caveira.png: ~/Dropbox/inferno/caveira.png
+	cp $< $@
+
 logo_pseudo.png: ~/Dropbox/inferno/logo_pseudo.png
 	cp $< $@
 
@@ -95,7 +98,7 @@ font.o: font.c
 acid.c: ~/Dropbox/inferno/acid.ttf
 adler.c: ~/Dropbox/inferno/adler.ttf
 
-inferno: main.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o adler.o acid.o mapa.o menu.o menu_select.o music_credit.o    music_ingame.o music_menu.o hero.o zombie.o logo_pseudo.o creditos.o  player_hud.o stats_hud.o fogo.o
+inferno: main.o sound.o font.o m60.o pick.o shot.o punch0.o punch1.o punch2.o punch3.o punch4.o adler.o acid.o mapa.o menu.o menu_select.o music_credit.o    music_ingame.o music_menu.o hero.o zombie.o logo_pseudo.o creditos.o  player_hud.o stats_hud.o fogo.o caveira.o
 	gcc $(CFLAGS) $(LDFLAGS) $^ -lSDL_gfx -lSDL_image -lSDL_mixer -lSDL_ttf `sdl-config --libs` -o $@
 
 debug: inferno
