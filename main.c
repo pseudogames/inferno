@@ -253,6 +253,17 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
     sprite_gen_rotation(sprite);
 }
 
+void angle_rotate(int *a0_base, int a1, float f)
+{
+	int a0 = *a0_base;
+	if(fabs(a1 - a0) > 180) {
+		if(a0 < a1)
+			a0 += 360;
+		else
+			a1 += 360;
+	}
+	*a0_base = (int)((720+a0)*(1-f) + f*(720+a1)) % 360;
+}
 
 
 void body_move(Game *game, Body *body, int angle)
@@ -283,10 +294,7 @@ void body_move(Game *game, Body *body, int angle)
 					high_x-body->pos.x,
 					high_y-body->pos.y
 					);
-			if(fabs(angle - a) > 180) {
-				a += 360;
-			}
-			angle = angle*(1-k) + k*a;
+			angle_rotate(&angle, a, k);
 			v *= .5;
 		}
 		if(high>0x90) {
@@ -298,11 +306,7 @@ void body_move(Game *game, Body *body, int angle)
 		}
 	}
 
-    if(fabs(body->angle - angle) > 180) {
-		angle += 360;
-	}
-    float f = body->ang_vel;
-	body->angle = (int)(720 + body->angle * (1-f) + angle * f) % 720;
+	angle_rotate(&body->angle, angle, body->ang_vel);
     float a = body->angle * M_PI / 180;
     body->pos.x += cos(a) * v;
     body->pos.y -= sin(a) * v;
@@ -472,12 +476,14 @@ void hud_timer(Game *game, char *timer) {
 
 void hud_draw(Game *game, SDL_Surface *screen ){
     float health = MAX(0,game->player.health) / (float)game->player.max_health;
+	int red = SDL_MapRGB(screen->format, 0xff, 0x00, 0x00);
+	int green = SDL_MapRGB(screen->format, 0x00, 0xff, 0x00);
 
     SDL_Rect src = {45, 15, 200 * health, 15};
-    SDL_FillRect(screen, &src, 0xff0000);
+    SDL_FillRect(screen, &src, red);
 
     SDL_Rect hista_src = {45, 42, game->player.max_vel * 19 , 15};
-    SDL_FillRect(screen, &hista_src, 0x00ff00);
+    SDL_FillRect(screen, &hista_src, green);
 
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 
@@ -738,7 +744,7 @@ void gameover_render(Game *game, SDL_Surface *screen)
     char s[50]; 
     sprintf(s, "You killed %d zombies, well done", game->body_count);
 
-    text_write_raw(screen, 100, 600, s, white, 45);
+    text_write_raw(screen, 20, 600, s, white, 45);
 
     /*text_write_raw(screen, 200, 250, "programming", red, 36);*/
         /*text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);*/
@@ -872,7 +878,7 @@ int main( int argc, char* args[] )
 
     /*handle_menu_music();*/
     
-    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE | SDL_FULLSCREEN);
+    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
 
 
     load_screen(app.screen);
