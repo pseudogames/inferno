@@ -474,10 +474,10 @@ void hud_draw(Game *game, SDL_Surface *screen ){
     float health = MAX(0,game->player.health) / (float)game->player.max_health;
 
     SDL_Rect src = {45, 15, 200 * health, 15};
-    SDL_FillRect(screen, &src, 0x0000ffff);
+    SDL_FillRect(screen, &src, 0xff0000);
 
     SDL_Rect hista_src = {45, 42, game->player.max_vel * 19 , 15};
-    SDL_FillRect(screen, &hista_src, 0x00ff00ff);
+    SDL_FillRect(screen, &hista_src, 0x00ff00);
 
     SDL_BlitSurface( game->player_hud, NULL, screen, NULL );
 
@@ -872,7 +872,7 @@ int main( int argc, char* args[] )
 
     /*handle_menu_music();*/
     
-    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE );
+    app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE | SDL_FULLSCREEN);
 
 
     load_screen(app.screen);
@@ -949,7 +949,7 @@ int main( int argc, char* args[] )
                             app.game.heatmap ^= 1;
 							break;
                         case SDLK_f:
-                            /*fullscreen = toggle_fullscreen(fullscreen);*/
+                            fullscreen = toggle_fullscreen(fullscreen);
                             break;
                     }
             }
