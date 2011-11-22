@@ -71,6 +71,7 @@ typedef enum {
 
 typedef enum { 
     MENU_START = 0,
+    MENU_HIGHSCORE, 
     MENU_CREDIT, 
     MENU_QUIT,
     MENU_COUNT
@@ -648,14 +649,11 @@ State game_render(Game *game, SDL_Surface *screen)
 				body[n]->pos.y = game->player.pos.y + sin(a) * r;
 				//printf("ressurect %d %d\n",body[n]->pos.x, body[n]->pos.y);
 			}
-		} else if(
-				(body[n]->health <= 0) || dist > (screen->w + screen->h)
-		) {
+		} else if( (body[n]->health <= 0) || dist > (screen->w + screen->h)) {
 			body[n]->action = ACTION_DEATH;
 			body[n]->frame = 0;
 			body[n]->angle = 0;
-            if (body[n]->health <= 0)
-                game->body_count++;
+            if (body[n]->health <= 0) game->body_count++;
 		} else {
 			int attack_dist = 
 				(body[n]->sprite->rotated_frame_size.x+
@@ -677,6 +675,7 @@ State game_render(Game *game, SDL_Surface *screen)
 
 	if(game->player.action == ACTION_DEATH) {
 		if(++game->player.frame >= game->player.sprite->frame_count) {
+            send_highscore(game->elapsed, game->body_count, "FMC" );
 			state = STATE_GAMEOVER;
 		}
 	} else if(game->player.health <= 0) {
@@ -725,8 +724,9 @@ void menu_render(Menu *menu, SDL_Surface *screen)
 
     text_write_raw(screen, 300, 100, "INFERNO", red, 96);
     text_write(screen, 100, 250, "new game", menu->selected ^ 0);
-    text_write(screen, 100, 350, "credits", menu->selected ^ 1);
-    text_write(screen, 100, 450, "exit", menu->selected ^ 2);
+    text_write(screen, 100, 350, "highscore", menu->selected ^ 1);
+    text_write(screen, 100, 450, "credits", menu->selected ^ 2);
+    text_write(screen, 100, 550, "exit", menu->selected ^ 3);
 }
 
 void gameover_render(Game *game, SDL_Surface *screen)
@@ -746,21 +746,10 @@ void gameover_render(Game *game, SDL_Surface *screen)
 
     text_write_raw(screen, 20, 600, s, white, 45);
 
-    /*text_write_raw(screen, 200, 250, "programming", red, 36);*/
-        /*text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);*/
-        /*text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);*/
 
-    /*text_write_raw(screen, 200, 400, "art", red, 36);*/
-        /*text_write_raw(screen, 200, 450, "Cristine Ronchi", white, 26);*/
-
-    /*text_write_raw(screen, 200, 500, "music", red, 36);*/
-        /*text_write_raw(screen, 200, 550, "the DARK WOODS of FANTASY (C)1994 D.Barber. ", white, 16);*/
-        /*text_write_raw(screen, 200, 570, "the fORESt RiveR (C)1994 D.Barber. ", white, 16);*/
-        /*text_write_raw(screen, 200, 590, "spacewalk (c)1996 CB/Analogue ", white, 16);*/
-        /*text_write_raw(screen, 200, 610, "effects by AKAI & Roland phanton soundengine", white, 16);*/
-    /*[>text_write_raw(screen, 200, 550, "textures", red, 36);<]*/
-
+    // TODO NET PING HIGH SCORE 
 }
+
 void credit_render(Credit *credit, SDL_Surface *screen)
 {
     Uint32 ticks = SDL_GetTicks();
@@ -880,6 +869,7 @@ int main( int argc, char* args[] )
     
     app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
 
+    ping_pseudogames_sever();
 
     load_screen(app.screen);
 
