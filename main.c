@@ -91,7 +91,7 @@ typedef struct {
     point pos;
     vec vel;
     float max_vel;
-	float ang_vel;
+    float ang_vel;
     int angle; // degree
     int max_health;
     int health;
@@ -101,9 +101,9 @@ typedef struct {
     Action action;
     int frame;
     Sprite *sprite;
-	int hitmap_x;
-	int hitmap_y;
-	int hitmap_in;
+    int hitmap_x;
+    int hitmap_y;
+    int hitmap_in;
 } Body;
 
 #define MAX_FIRE 64
@@ -113,13 +113,13 @@ typedef struct{
     Sprite hero;
     Body player;
     Body enemy[MAX_ENEMIES];
-	int enemy_count;
+    int enemy_count;
     int pressed[SDLK_LAST];
     SDL_Surface *background;
 
     Body fire[MAX_FIRE];
-	int fire_next;
-    
+    int fire_next;
+
     SDL_Surface *player_hud;
     SDL_Surface *stats_hud;
 
@@ -127,12 +127,15 @@ typedef struct{
     int ammo; 
     int keys;
 
-	int hitmap_dec;
-	int hitmap_w;
-	int hitmap_h;
-	int hitmap_len;
-	Uint8 *hitmap;
-	int heatmap;
+    int hitmap_dec;
+    int hitmap_w;
+    int hitmap_h;
+    int hitmap_len;
+    Uint8 *hitmap;
+    int heatmap;
+
+    char *player_name;
+    int player_name_ref;
 
     Uint32 started; 
     Uint32 elapsed; 
@@ -257,58 +260,58 @@ void sprite_init(Sprite *sprite, int ox, int oy, int fx, int fy, int c, void *im
 
 void angle_rotate(int *a0_base, int a1, float f)
 {
-	int a0 = *a0_base;
-	if(fabs(a1 - a0) > 180) {
-		if(a0 < a1)
-			a0 += 360;
-		else
-			a1 += 360;
-	}
-	*a0_base = (int)((720+a0)*(1-f) + f*(720+a1)) % 360;
+    int a0 = *a0_base;
+    if(fabs(a1 - a0) > 180) {
+        if(a0 < a1)
+            a0 += 360;
+        else
+            a1 += 360;
+    }
+    *a0_base = (int)((720+a0)*(1-f) + f*(720+a1)) % 360;
 }
 
 
 void body_move(Game *game, Body *body, int angle)
 {
-	if(body->action == ACTION_DEATH)
-		return;
-	float v = body->max_vel;
+    if(body->action == ACTION_DEATH)
+        return;
+    float v = body->max_vel;
     if(body->hitmap_in) {
-		int x0 = MAX(body->hitmap_x-1, 0);
-		int y0 = MAX(body->hitmap_y-1, 0);
-		int x1 = MIN(body->hitmap_x+1, game->hitmap_w-1);
-		int y1 = MIN(body->hitmap_y+1, game->hitmap_h-1);
-		int x,y;
-		int high_x, high_y, high = 0;
-		for(y=y0; y<=y1; y++) {
-			for(x=x0; x<=x1; x++) {
-				int v = game->hitmap[x+y*game->hitmap_w];
-				if(v > high) {
-					high_x = x;
-					high_y = y;
-					high = v;
-				}
-			}
-		}
-		if(high>0x50) {
-			float k = high/256.;
-			int a = ATAN2(
-					high_x-body->pos.x,
-					high_y-body->pos.y
-					);
-			angle_rotate(&angle, a, k);
-			v *= .5;
-		}
-		if(high>0x90) {
-			body->health -= high/16;
-			v *= .25;
+        int x0 = MAX(body->hitmap_x-1, 0);
+        int y0 = MAX(body->hitmap_y-1, 0);
+        int x1 = MIN(body->hitmap_x+1, game->hitmap_w-1);
+        int y1 = MIN(body->hitmap_y+1, game->hitmap_h-1);
+        int x,y;
+        int high_x, high_y, high = 0;
+        for(y=y0; y<=y1; y++) {
+            for(x=x0; x<=x1; x++) {
+                int v = game->hitmap[x+y*game->hitmap_w];
+                if(v > high) {
+                    high_x = x;
+                    high_y = y;
+                    high = v;
+                }
+            }
+        }
+        if(high>0x50) {
+            float k = high/256.;
+            int a = ATAN2(
+                    high_x-body->pos.x,
+                    high_y-body->pos.y
+                    );
+            angle_rotate(&angle, a, k);
+            v *= .5;
+        }
+        if(high>0x90) {
+            body->health -= high/16;
+            v *= .25;
             if (body->health < 0){
                 body->health = 0;
             }
-		}
-	}
+        }
+    }
 
-	angle_rotate(&body->angle, angle, body->ang_vel);
+    angle_rotate(&body->angle, angle, body->ang_vel);
     float a = body->angle * M_PI / 180;
     body->pos.x += cos(a) * v;
     body->pos.y -= sin(a) * v;
@@ -319,23 +322,23 @@ void body_move(Game *game, Body *body, int angle)
 void body_draw(Game *game, Body *body, SDL_Surface *screen)
 {
     SDL_Rect dst = {
-		screen->w/2 + body->pos.x - game->player.pos.x - body->sprite->rotated_frame_size.x/2,
-		screen->h/2 + body->pos.y - game->player.pos.y - body->sprite->rotated_frame_size.y/2,
-		0,0
-	};
-	int x = (dst.x+body->sprite->rotated_frame_size.x/2)/game->hitmap_dec;
-	int y = (dst.y+body->sprite->rotated_frame_size.y/2)/game->hitmap_dec;
-	body->hitmap_in = 0;
-	if(x>0 && x<game->hitmap_w &&
-	   y>0 && y<game->hitmap_h) {
-		int i = x+y*game->hitmap_w;
-		body->hitmap_in = 1;
-		body->hitmap_x = x;
-		body->hitmap_y = y;
-		game->hitmap[i] = MIN(game->hitmap[i] + body->health/4, 0xff);
-		//if(game->hitmap[i]>64)
-			//printf("hitmap x %d y %d = %d\n", x,y,game->hitmap[i] );
-	}
+        screen->w/2 + body->pos.x - game->player.pos.x - body->sprite->rotated_frame_size.x/2,
+        screen->h/2 + body->pos.y - game->player.pos.y - body->sprite->rotated_frame_size.y/2,
+        0,0
+    };
+    int x = (dst.x+body->sprite->rotated_frame_size.x/2)/game->hitmap_dec;
+    int y = (dst.y+body->sprite->rotated_frame_size.y/2)/game->hitmap_dec;
+    body->hitmap_in = 0;
+    if(x>0 && x<game->hitmap_w &&
+            y>0 && y<game->hitmap_h) {
+        int i = x+y*game->hitmap_w;
+        body->hitmap_in = 1;
+        body->hitmap_x = x;
+        body->hitmap_y = y;
+        game->hitmap[i] = MIN(game->hitmap[i] + body->health/4, 0xff);
+        //if(game->hitmap[i]>64)
+        //printf("hitmap x %d y %d = %d\n", x,y,game->hitmap[i] );
+    }
 
     SDL_Rect src;
     sprite_rotated_rect(body->sprite, body->action, body->frame, body->angle, &src);
@@ -346,9 +349,9 @@ State credit_event(Credit *credit, SDL_Event *event) {
     switch(event->type) {
         case SDL_KEYDOWN:
             if(event->key.keysym.sym == key_start ||
-               event->key.keysym.sym == key_fire)
-			{
-                    return STATE_MENU;
+                    event->key.keysym.sym == key_fire)
+            {
+                return STATE_MENU;
             }
     }
     return STATE_CREDIT;
@@ -356,43 +359,43 @@ State credit_event(Credit *credit, SDL_Event *event) {
 
 void game_init(Game *game)
 {
-	memset(game->hitmap, 0, game->hitmap_len);
+    memset(game->hitmap, 0, game->hitmap_len);
 
-	game->player.sprite = &game->hero;
-	game->player.ang_vel = .2;
-	game->player.max_vel = 10;
-	game->player.health = 
-	game->player.max_health = 100;
-	game->player.action = ACTION_MOVE;
-	game->player.frame = 0;
-	game->player.pos.y = 
-	game->player.pos.x = 0;
+    game->player.sprite = &game->hero;
+    game->player.ang_vel = .2;
+    game->player.max_vel = 10;
+    game->player.health = 
+        game->player.max_health = 100;
+    game->player.action = ACTION_MOVE;
+    game->player.frame = 0;
+    game->player.pos.y = 
+        game->player.pos.x = 0;
 
-	game->body_count = 0;
+    game->body_count = 0;
 
     int i;
     for(i=0;i<MAX_ENEMIES;i++) {
-		game->enemy[i].sprite = &game->zombie;
-		game->enemy[i].max_health = 25;
-		game->enemy[i].ang_vel = .05;
-		game->enemy[i].max_vel = 5;
-		game->enemy[i].health = 0;
-		game->enemy[i].action = ACTION_DEATH;
-		game->enemy[i].frame = game->enemy[i].sprite->frame_count;
+        game->enemy[i].sprite = &game->zombie;
+        game->enemy[i].max_health = 25;
+        game->enemy[i].ang_vel = .05;
+        game->enemy[i].max_vel = 5;
+        game->enemy[i].health = 0;
+        game->enemy[i].action = ACTION_DEATH;
+        game->enemy[i].frame = game->enemy[i].sprite->frame_count;
     }
-	game->enemy_count = 0;
+    game->enemy_count = 0;
 
     for(i=0;i<MAX_FIRE;i++) {
-		game->fire[i].sprite = &game->fogo;
-		game->fire[i].health = 0;
-		game->fire[i].max_health = 1000;
-		game->fire[i].ang_vel = .1;
-		game->fire[i].max_vel = 30;
-		game->fire[i].action = ACTION_MOVE;
-		game->fire[i].frame = 9;
-		game->fire[i].angle = 0;
+        game->fire[i].sprite = &game->fogo;
+        game->fire[i].health = 0;
+        game->fire[i].max_health = 1000;
+        game->fire[i].ang_vel = .1;
+        game->fire[i].max_vel = 30;
+        game->fire[i].action = ACTION_MOVE;
+        game->fire[i].frame = 9;
+        game->fire[i].angle = 0;
     }
-	game->fire_next = 0;
+    game->fire_next = 0;
 
     memset(game->pressed, 0, sizeof(game->pressed));
 
@@ -402,11 +405,22 @@ State gameover_event(Game *game, SDL_Event *event) {
     switch(event->type) {
         case SDL_KEYDOWN:
             if(event->key.keysym.sym == key_start ||
-               event->key.keysym.sym == key_fire)
-			{
-                    game_init(game);
-                    return STATE_MENU;
+                    event->key.keysym.sym == key_fire)
+            {
+                game_init(game);
+                return STATE_HIGHSCORE;
+            } else if(event->key.keysym.sym == key_up) {
+                play_menu_select();
+                game->player_name[game->player_name_ref] = game->player_name[game->player_name_ref] + 1;
+            } else if(event->key.keysym.sym == key_down) {
+                play_menu_select();
+                game->player_name[game->player_name_ref] = game->player_name[game->player_name_ref] - 1;
+            } else if(event->key.keysym.sym == key_right && game->player_name_ref < 7 ) {
+                game->player_name_ref++;
+            } else if(event->key.keysym.sym == key_left && game->player_name_ref > 0) {
+                game->player_name_ref--;
             }
+
     }
     return STATE_GAMEOVER;
 }
@@ -415,9 +429,9 @@ State highscore_event(Game *game, SDL_Event *event) {
     switch(event->type) {
         case SDL_KEYDOWN:
             if(event->key.keysym.sym == key_start ||
-               event->key.keysym.sym == key_fire)
-			{
-                    return STATE_MENU;
+                    event->key.keysym.sym == key_fire)
+            {
+                return STATE_MENU;
             }
     }
     return STATE_HIGHSCORE;
@@ -427,21 +441,21 @@ State menu_event(Menu *menu, SDL_Event *event) {
     switch(event->type) {
         case SDL_KEYDOWN:
             if(event->key.keysym.sym == key_start) {
-                    return STATE_GAME;
+                return STATE_GAME;
             } else if(event->key.keysym.sym == key_up) {
-                    play_menu_select();
-                    menu->selected = (menu->selected - 1 ) % MENU_COUNT;
+                play_menu_select();
+                menu->selected = (menu->selected - 1 ) % MENU_COUNT;
             } else if(event->key.keysym.sym == key_down) {
-                    play_menu_select();
-                    menu->selected = (menu->selected + 1 ) % MENU_COUNT;
-			} else if(event->key.keysym.sym == key_fire) {
-                    play_menu_confirm();
-                    switch(menu->selected) {
-                        case MENU_START:  return STATE_GAME;
-                        case MENU_CREDIT: return STATE_CREDIT;
-                        case MENU_HIGHSCORE: return STATE_HIGHSCORE;
-                        case MENU_QUIT:   return STATE_QUIT;
-                    }
+                play_menu_select();
+                menu->selected = (menu->selected + 1 ) % MENU_COUNT;
+            } else if(event->key.keysym.sym == key_fire) {
+                play_menu_confirm();
+                switch(menu->selected) {
+                    case MENU_START:  return STATE_GAME;
+                    case MENU_CREDIT: return STATE_CREDIT;
+                    case MENU_HIGHSCORE: return STATE_HIGHSCORE;
+                    case MENU_QUIT:   return STATE_QUIT;
+                }
             }
     }
     return STATE_MENU;
@@ -454,9 +468,9 @@ State game_event(Game *game, SDL_Event *event) {
             return STATE_QUIT;
         case SDL_KEYDOWN:
             if(event->key.keysym.sym == key_start) {
-                    return STATE_MENU;
-			} else if(event->key.keysym.sym == SDLK_r) {
-                    game_init(game);
+                return STATE_MENU;
+            } else if(event->key.keysym.sym == SDLK_r) {
+                game_init(game);
             }
             //nobreak, slip...
         case SDL_KEYUP:
@@ -468,13 +482,13 @@ State game_event(Game *game, SDL_Event *event) {
 
 int ysort_cmp(const void *a, const void *b)
 {
-	Body *aa = *(Body**)a, *bb = *(Body**)b;
-	return (aa->pos.y > bb->pos.y) - (aa->pos.y < bb->pos.y);
+    Body *aa = *(Body**)a, *bb = *(Body**)b;
+    return (aa->pos.y > bb->pos.y) - (aa->pos.y < bb->pos.y);
 }
 
 void hud_setup(Game *game, SDL_Surface *screen){
-   game->player_hud = IMG_Load_RW( SDL_RWFromMem(player_hud_png, player_hud_png_len), 1 );
-   game->stats_hud = IMG_Load_RW( SDL_RWFromMem(caveira_png, caveira_png_len), 1 );
+    game->player_hud = IMG_Load_RW( SDL_RWFromMem(player_hud_png, player_hud_png_len), 1 );
+    game->stats_hud = IMG_Load_RW( SDL_RWFromMem(caveira_png, caveira_png_len), 1 );
 }
 
 void hud_timer(Game *game, char *timer) { 
@@ -491,8 +505,8 @@ void hud_timer(Game *game, char *timer) {
 
 void hud_draw(Game *game, SDL_Surface *screen ){
     float health = MAX(0,game->player.health) / (float)game->player.max_health;
-	int red = SDL_MapRGB(screen->format, 0xff, 0x00, 0x00);
-	int green = SDL_MapRGB(screen->format, 0x00, 0xff, 0x00);
+    int red = SDL_MapRGB(screen->format, 0xff, 0x00, 0x00);
+    int green = SDL_MapRGB(screen->format, 0x00, 0xff, 0x00);
 
     SDL_Rect src = {45, 15, 200 * health, 15};
     SDL_FillRect(screen, &src, red);
@@ -517,17 +531,17 @@ void hud_draw(Game *game, SDL_Surface *screen ){
 
 void fire_shot(Game *game, Body *launcher)
 {
-	Body *shot = &(game->fire[game->fire_next]);
-	launcher->frame = (launcher->frame + 1) % launcher->sprite->frame_count;
-	shot->action = ACTION_MOVE;
-	shot->frame = 0;
-	shot->pos.x = launcher->pos.x;
-	shot->pos.y = launcher->pos.y;
-	shot->angle = launcher->angle;
-	shot->pos.x += cos(shot->angle*M_PI/180) * shot->max_vel *2;
-	shot->pos.y -= sin(shot->angle*M_PI/180) * shot->max_vel *2;
-	shot->health = shot->max_health;
-	game->fire_next = (game->fire_next+1) % MAX_FIRE;
+    Body *shot = &(game->fire[game->fire_next]);
+    launcher->frame = (launcher->frame + 1) % launcher->sprite->frame_count;
+    shot->action = ACTION_MOVE;
+    shot->frame = 0;
+    shot->pos.x = launcher->pos.x;
+    shot->pos.y = launcher->pos.y;
+    shot->angle = launcher->angle;
+    shot->pos.x += cos(shot->angle*M_PI/180) * shot->max_vel *2;
+    shot->pos.y -= sin(shot->angle*M_PI/180) * shot->max_vel *2;
+    shot->health = shot->max_health;
+    game->fire_next = (game->fire_next+1) % MAX_FIRE;
 }
 
 State game_render(Game *game, SDL_Surface *screen)
@@ -535,12 +549,12 @@ State game_render(Game *game, SDL_Surface *screen)
     Uint32 ticks = SDL_GetTicks();
     game->elapsed = ticks - game->started;
 
-	State state = STATE_GAME;
+    State state = STATE_GAME;
     // move player
     int i,n,x,y;
 
-	if(game->enemy_count <= MAX_ENEMIES && (rand()%FPS) == 0)
-		game->enemy_count ++;
+    if(game->enemy_count <= MAX_ENEMIES && (rand()%FPS) == 0)
+        game->enemy_count ++;
 
     float dx=game->pressed[key_right]-game->pressed[key_left];
     float dy=game->pressed[key_down]-game->pressed[key_up];
@@ -550,180 +564,179 @@ State game_render(Game *game, SDL_Surface *screen)
 
     }
 
-	// player fire
-	if(game->player.action != ACTION_DEATH) {
-		if(game->pressed[key_fire]) {
-			game->player.action = ACTION_ATTACK;
-			fire_shot(game, &game->player);
-		} else {
-			game->player.action = ACTION_MOVE;
-		}
-	}
+    // player fire
+    if(game->player.action != ACTION_DEATH) {
+        if(game->pressed[key_fire]) {
+            game->player.action = ACTION_ATTACK;
+            fire_shot(game, &game->player);
+        } else {
+            game->player.action = ACTION_MOVE;
+        }
+    }
 
-	// enemy move
-	for(i=0; i < game->enemy_count; i++) {
-		int angle, a_player = 
-				ATAN2(
-					game->player.pos.x-game->enemy[i].pos.x,
-					game->player.pos.y-game->enemy[i].pos.y
-				);
-		
-		if(game->enemy[i].health < game->enemy[i].max_health * .10)
-			angle = rand()%360;
-		else if(game->enemy[i].health < game->enemy[i].max_health * .20)
-			angle = a_player + 180;
-		else if(game->enemy[i].health < game->enemy[i].max_health * .33)
-			angle = rand()%360;
-		else
-			angle = a_player;
-			
-		angle += (rand()%60)-30;
-		body_move(game, &game->enemy[i], angle);
-	}
+    // enemy move
+    for(i=0; i < game->enemy_count; i++) {
+        int angle, a_player = 
+            ATAN2(
+                    game->player.pos.x-game->enemy[i].pos.x,
+                    game->player.pos.y-game->enemy[i].pos.y
+                 );
+
+        if(game->enemy[i].health < game->enemy[i].max_health * .10)
+            angle = rand()%360;
+        else if(game->enemy[i].health < game->enemy[i].max_health * .20)
+            angle = a_player + 180;
+        else if(game->enemy[i].health < game->enemy[i].max_health * .33)
+            angle = rand()%360;
+        else
+            angle = a_player;
+
+        angle += (rand()%60)-30;
+        body_move(game, &game->enemy[i], angle);
+    }
 
     // CAMERA 
-	int wsx0 = game->player.pos.x - screen->w/2;
-	int wsy0 = game->player.pos.y - screen->h/2;
-	int wsx1 = game->player.pos.x + screen->w/2;
-	int wsy1 = game->player.pos.y + screen->h/2;
-	int x0 = floor((float)wsx0/game->background->w);
-	int y0 = floor((float)wsy0/game->background->h);
-	int x1 = floor((float)wsx1/game->background->w);
-	int y1 = floor((float)wsy1/game->background->h);
-	for(x=x0; x<=x1; x++) {
-		for(y=y0; y<=y1; y++) {
-			int wmx0 = x*game->background->w;
-			int wmy0 = y*game->background->h;
-			int wmx1 = wmx0 + game->background->w;
-			int wmy1 = wmy0 + game->background->h;
+    int wsx0 = game->player.pos.x - screen->w/2;
+    int wsy0 = game->player.pos.y - screen->h/2;
+    int wsx1 = game->player.pos.x + screen->w/2;
+    int wsy1 = game->player.pos.y + screen->h/2;
+    int x0 = floor((float)wsx0/game->background->w);
+    int y0 = floor((float)wsy0/game->background->h);
+    int x1 = floor((float)wsx1/game->background->w);
+    int y1 = floor((float)wsy1/game->background->h);
+    for(x=x0; x<=x1; x++) {
+        for(y=y0; y<=y1; y++) {
+            int wmx0 = x*game->background->w;
+            int wmy0 = y*game->background->h;
+            int wmx1 = wmx0 + game->background->w;
+            int wmy1 = wmy0 + game->background->h;
 
-			int wix0 = MAX(wmx0, wsx0);
-			int wiy0 = MAX(wmy0, wsy0);
-			int wix1 = MIN(wmx1, wsx1);
-			int wiy1 = MIN(wmy1, wsy1);
+            int wix0 = MAX(wmx0, wsx0);
+            int wiy0 = MAX(wmy0, wsy0);
+            int wix1 = MIN(wmx1, wsx1);
+            int wiy1 = MIN(wmy1, wsy1);
 
-			int mix0 = wix0 - wmx0;
-			int miy0 = wiy0 - wmy0;
-			int mix1 = wix1 - wmx1;
-			int miy1 = wiy1 - wmy1;
+            int mix0 = wix0 - wmx0;
+            int miy0 = wiy0 - wmy0;
+            int mix1 = wix1 - wmx1;
+            int miy1 = wiy1 - wmy1;
 
-			int six0 = wix0 - wsx0;
-			int siy0 = wiy0 - wsy0;
-			int six1 = wix1 - wsx1;
-			int siy1 = wiy1 - wsy1;
+            int six0 = wix0 - wsx0;
+            int siy0 = wiy0 - wsy0;
+            int six1 = wix1 - wsx1;
+            int siy1 = wiy1 - wsy1;
 
-			//printf("a) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx0,wsy0, wmx0,wmy0, wix0,wiy0, mix0,miy0, six0,siy0);
-			//printf("b) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx1,wsy1, wmx1,wmy1, wix1,wiy1, mix1,miy1, six1,siy1);
-			SDL_Rect src = {mix0, miy0, mix1-mix0, miy1-miy0};
-			SDL_Rect dst = {six0, siy0, six1-six0, siy1-siy0};
-			SDL_BlitSurface( game->background, &src, screen, &dst );
-		}
-	}
+            //printf("a) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx0,wsy0, wmx0,wmy0, wix0,wiy0, mix0,miy0, six0,siy0);
+            //printf("b) q %d %d : ws %d %d : wm %d %d : wi %d %d : mi %d %d : si %d %d\n", x,y, wsx1,wsy1, wmx1,wmy1, wix1,wiy1, mix1,miy1, six1,siy1);
+            SDL_Rect src = {mix0, miy0, mix1-mix0, miy1-miy0};
+            SDL_Rect dst = {six0, siy0, six1-six0, siy1-siy0};
+            SDL_BlitSurface( game->background, &src, screen, &dst );
+        }
+    }
 
     //SDL_LockSurface( screen );
 
-	for(y=0; y<game->hitmap_h; y++) {
-		Uint32 *p = (Uint32*)(((Uint8*)screen->pixels)+screen->pitch*(y*game->hitmap_dec+game->hitmap_dec/2)+game->hitmap_dec/2);
-		for(x=0; x<game->hitmap_w; x++,p+=game->hitmap_dec) {
-			Uint8 *c = (Uint8*)p;
-			int v = (int)(c[1]+c[2]+1)/(c[3]/32+1);
-			if(v<64) v = 0;
-			game->hitmap[x+y*game->hitmap_w] = v;
-		}
-	}
-	
+    for(y=0; y<game->hitmap_h; y++) {
+        Uint32 *p = (Uint32*)(((Uint8*)screen->pixels)+screen->pitch*(y*game->hitmap_dec+game->hitmap_dec/2)+game->hitmap_dec/2);
+        for(x=0; x<game->hitmap_w; x++,p+=game->hitmap_dec) {
+            Uint8 *c = (Uint8*)p;
+            int v = (int)(c[1]+c[2]+1)/(c[3]/32+1);
+            if(v<64) v = 0;
+            game->hitmap[x+y*game->hitmap_w] = v;
+        }
+    }
+
     //SDL_UnlockSurface( screen );
 
-	// BODIES
-	Body *body[1+MAX_ENEMIES+MAX_FIRE];
-	n=0;
-	body[n++] = &game->player;
+    // BODIES
+    Body *body[1+MAX_ENEMIES+MAX_FIRE];
+    n=0;
+    body[n++] = &game->player;
     for(i=0; i < MAX_FIRE; i++) {
-		if(game->fire[i].health>0) {
-			body[n++] = &game->fire[i];
-			body_move(game,&game->fire[i],game->fire[i].angle);
-			game->fire[i].health *= .95;
-			//printf("%d) %d [%d, %d]\n", i, game->fire[i].health, game->fire[i].pos.x, game->fire[i].pos.y);
-		}
-	}
+        if(game->fire[i].health>0) {
+            body[n++] = &game->fire[i];
+            body_move(game,&game->fire[i],game->fire[i].angle);
+            game->fire[i].health *= .95;
+            //printf("%d) %d [%d, %d]\n", i, game->fire[i].health, game->fire[i].pos.x, game->fire[i].pos.y);
+        }
+    }
     for(i=0; i < game->enemy_count; i++,n++) {
-		body[n] = &game->enemy[i];
+        body[n] = &game->enemy[i];
 
-		int dist = fabs(body[n]->pos.x-game->player.pos.x)+
-				 fabs(body[n]->pos.y-game->player.pos.y);
+        int dist = fabs(body[n]->pos.x-game->player.pos.x)+
+            fabs(body[n]->pos.y-game->player.pos.y);
 
-		if(body[n]->action == ACTION_DEATH) {
-			if(++body[n]->frame >= body[n]->sprite->frame_count) {
-				body[n]->action = ACTION_MOVE;
-				body[n]->health = body[n]->max_health;
-				body[n]->max_vel = game->player.max_vel*(2+rand()%4)/5;
-				float a = (rand()%180)/M_PI;
-				int r = MAX(screen->w,screen->h);
-				body[n]->pos.x = game->player.pos.x + cos(a) * r;
-				body[n]->pos.y = game->player.pos.y + sin(a) * r;
-				//printf("ressurect %d %d\n",body[n]->pos.x, body[n]->pos.y);
-			}
-		} else if( (body[n]->health <= 0) || dist > (screen->w + screen->h)) {
-			body[n]->action = ACTION_DEATH;
-			body[n]->frame = 0;
-			body[n]->angle = 0;
+        if(body[n]->action == ACTION_DEATH) {
+            if(++body[n]->frame >= body[n]->sprite->frame_count) {
+                body[n]->action = ACTION_MOVE;
+                body[n]->health = body[n]->max_health;
+                body[n]->max_vel = game->player.max_vel*(2+rand()%4)/5;
+                float a = (rand()%180)/M_PI;
+                int r = MAX(screen->w,screen->h);
+                body[n]->pos.x = game->player.pos.x + cos(a) * r;
+                body[n]->pos.y = game->player.pos.y + sin(a) * r;
+                //printf("ressurect %d %d\n",body[n]->pos.x, body[n]->pos.y);
+            }
+        } else if( (body[n]->health <= 0) || dist > (screen->w + screen->h)) {
+            body[n]->action = ACTION_DEATH;
+            body[n]->frame = 0;
+            body[n]->angle = 0;
             if (body[n]->health <= 0) game->body_count++;
-		} else {
-			int attack_dist = 
-				(body[n]->sprite->rotated_frame_size.x+
-				 body[n]->sprite->rotated_frame_size.y);
-				if((body[n]->health > body[n]->max_health * .25 ) && (dist < attack_dist/4)) {
-					body[n]->action = ACTION_ATTACK;
-					if(dist < attack_dist/8)
-						game->player.health -= game->enemy[i].health*.25 *(1 - ((float)dist / (attack_dist/8)));
-				} else {
-					body[n]->action = ACTION_MOVE;
-				}
-		}
+        } else {
+            int attack_dist = 
+                (body[n]->sprite->rotated_frame_size.x+
+                 body[n]->sprite->rotated_frame_size.y);
+            if((body[n]->health > body[n]->max_health * .25 ) && (dist < attack_dist/4)) {
+                body[n]->action = ACTION_ATTACK;
+                if(dist < attack_dist/8)
+                    game->player.health -= game->enemy[i].health*.25 *(1 - ((float)dist / (attack_dist/8)));
+            } else {
+                body[n]->action = ACTION_MOVE;
+            }
+        }
 
-	}
-	qsort(body, n, sizeof(body[0]), ysort_cmp); // blend ordering
+    }
+    qsort(body, n, sizeof(body[0]), ysort_cmp); // blend ordering
     for(i=0;i<n;i++) {
         body_draw(game, body[i], screen);
     }
 
-	if(game->player.action == ACTION_DEATH) {
-		if(++game->player.frame >= game->player.sprite->frame_count) {
-            send_highscore(game->elapsed, game->body_count, "FMC" );
-			state = STATE_GAMEOVER;
-		}
-	} else if(game->player.health <= 0) {
-		game->player.action = ACTION_DEATH;
-		game->player.frame = 0;
-	}
+    if(game->player.action == ACTION_DEATH) {
+        if(++game->player.frame >= game->player.sprite->frame_count) {
+            state = STATE_GAMEOVER;
+        }
+    } else if(game->player.health <= 0) {
+        game->player.action = ACTION_DEATH;
+        game->player.frame = 0;
+    }
 
 
-	if(game->heatmap) { // DEBUG HITMAP
-		SDL_Surface *tile = SDL_CreateRGBSurface(SDL_HWSURFACE, 
-				game->hitmap_dec, 
-				game->hitmap_dec,
-				RGB_FORMAT);
-		SDL_FillRect(tile, NULL, 0xffffffff);
+    if(game->heatmap) { // DEBUG HITMAP
+        SDL_Surface *tile = SDL_CreateRGBSurface(SDL_HWSURFACE, 
+                game->hitmap_dec, 
+                game->hitmap_dec,
+                RGB_FORMAT);
+        SDL_FillRect(tile, NULL, 0xffffffff);
 
-		for(y=0; y<game->hitmap_h; y++) {
-			for(x=0; x<game->hitmap_w; x++) {
-				SDL_Rect dst = {
-					x*game->hitmap_dec,
-					y*game->hitmap_dec,
-					game->hitmap_dec,
-					game->hitmap_dec
-				};
-				SDL_SetAlpha(tile, SDL_SRCALPHA, game->hitmap[x+y*game->hitmap_w]);
-				SDL_BlitSurface( tile, NULL, screen, &dst );
-			}
-		}
+        for(y=0; y<game->hitmap_h; y++) {
+            for(x=0; x<game->hitmap_w; x++) {
+                SDL_Rect dst = {
+                    x*game->hitmap_dec,
+                    y*game->hitmap_dec,
+                    game->hitmap_dec,
+                    game->hitmap_dec
+                };
+                SDL_SetAlpha(tile, SDL_SRCALPHA, game->hitmap[x+y*game->hitmap_w]);
+                SDL_BlitSurface( tile, NULL, screen, &dst );
+            }
+        }
 
-		SDL_FreeSurface(tile);
-	}
-	
+        SDL_FreeSurface(tile);
+    }
+
     hud_draw(game, screen);
 
-	return state;
+    return state;
 }
 
 void menu_render(Menu *menu, SDL_Surface *screen)
@@ -761,6 +774,7 @@ void gameover_render(Game *game, SDL_Surface *screen)
 
     text_write_raw(screen, 20, 600, s, white, 45);
 
+    text_write_raw(screen, 20, 700, game->player_name, white, 45);
 
     // TODO NET PING HIGH SCORE 
 }
@@ -777,7 +791,7 @@ void highscore_render(Game *game, SDL_Surface *screen)
 
     text_write_raw(screen, 100, 100, "Global Highscore", red, 74);
 
-    
+
 
     int i;
     for (i = 0; i < 10; i++) {
@@ -798,17 +812,17 @@ void credit_render(Credit *credit, SDL_Surface *screen)
 
     text_write_raw(screen, 300, 100, "CREDITS", red, 96);
     text_write_raw(screen, 200, 250, "programming", red, 36);
-        text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);
-        text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);
+    text_write_raw(screen, 200, 300, "Carlo \"zED\" Caputo", white, 26);
+    text_write_raw(screen, 200, 350, "Fernando Meyer", white, 26);
 
     text_write_raw(screen, 200, 400, "art", red, 36);
-        text_write_raw(screen, 200, 450, "Cristine Ronchi", white, 26);
+    text_write_raw(screen, 200, 450, "Cristine Ronchi", white, 26);
 
     text_write_raw(screen, 200, 500, "music", red, 36);
-        text_write_raw(screen, 200, 550, "the DARK WOODS of FANTASY (C)1994 D.Barber. ", white, 16);
-        text_write_raw(screen, 200, 570, "the fORESt RiveR (C)1994 D.Barber. ", white, 16);
-        text_write_raw(screen, 200, 590, "spacewalk (c)1996 CB/Analogue ", white, 16);
-        text_write_raw(screen, 200, 610, "effects by AKAI & Roland phanton soundengine", white, 16);
+    text_write_raw(screen, 200, 550, "the DARK WOODS of FANTASY (C)1994 D.Barber. ", white, 16);
+    text_write_raw(screen, 200, 570, "the fORESt RiveR (C)1994 D.Barber. ", white, 16);
+    text_write_raw(screen, 200, 590, "spacewalk (c)1996 CB/Analogue ", white, 16);
+    text_write_raw(screen, 200, 610, "effects by AKAI & Roland phanton soundengine", white, 16);
     /*text_write_raw(screen, 200, 550, "textures", red, 36);*/
 
 }
@@ -855,24 +869,24 @@ int toggle_fullscreen(int fullscreen) {
 
 int main( int argc, char* args[] )
 {
-	// keyboard con&f
-	FILE *fp = fopen("inferno.ini", "r");
-	if(fp) {
-		fscanf(fp,"key_start=%d\n", &key_start);
-		fscanf(fp,"key_fire=%d\n", &key_fire);
-		fscanf(fp,"key_right=%d\n", &key_right);
-		fscanf(fp,"key_left=%d\n", &key_left);
-		fscanf(fp,"key_down=%d\n", &key_down);
-		fscanf(fp,"key_up=%d\n", &key_up);
+    // keyboard con&f
+    FILE *fp = fopen("inferno.ini", "r");
+    if(fp) {
+        fscanf(fp,"key_start=%d\n", &key_start);
+        fscanf(fp,"key_fire=%d\n", &key_fire);
+        fscanf(fp,"key_right=%d\n", &key_right);
+        fscanf(fp,"key_left=%d\n", &key_left);
+        fscanf(fp,"key_down=%d\n", &key_down);
+        fscanf(fp,"key_up=%d\n", &key_up);
 
-		printf("key_start=%d\n", key_start);
-		printf("key_fire=%d\n", key_fire);
-		printf("key_right=%d\n", key_right);
-		printf("key_left=%d\n", key_left);
-		printf("key_down=%d\n", key_down);
-		printf("key_up=%d\n", key_up);
-		fclose(fp);
-	}
+        printf("key_start=%d\n", key_start);
+        printf("key_fire=%d\n", key_fire);
+        printf("key_right=%d\n", key_right);
+        printf("key_left=%d\n", key_left);
+        printf("key_down=%d\n", key_down);
+        printf("key_up=%d\n", key_up);
+        fclose(fp);
+    }
 
 
 
@@ -892,6 +906,7 @@ int main( int argc, char* args[] )
     }
 #endif
 
+    char tmp[] = {'A', 'A', 'A', 'A', 'A', 'A','A','A',0};
     // init font system 
     init_font();
 
@@ -902,10 +917,10 @@ int main( int argc, char* args[] )
     loadEffects();
 
     /*handle_menu_music();*/
-    
+
     app.screen = SDL_SetVideoMode( 1024, 768, 32, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
 
-    ping_pseudogames_sever();
+    ping_pseudogames();
 
     load_screen(app.screen);
 
@@ -917,14 +932,16 @@ int main( int argc, char* args[] )
     app.credit.background = app.background;
     SDL_FreeSurface(tmp_bg);
 
-	app.game.heatmap = 0;
-	app.game.body_count = 0;
+    app.game.heatmap = 0;
+    app.game.body_count = 0;
 
-	app.game.hitmap_dec = 24;
-	app.game.hitmap_w = app.screen->w/app.game.hitmap_dec;
-	app.game.hitmap_h = app.screen->h/app.game.hitmap_dec;
-	app.game.hitmap_len = app.game.hitmap_w*app.game.hitmap_h;
-	app.game.hitmap = malloc(app.game.hitmap_len);
+    app.game.hitmap_dec = 24;
+    app.game.hitmap_w = app.screen->w/app.game.hitmap_dec;
+    app.game.hitmap_h = app.screen->h/app.game.hitmap_dec;
+    app.game.hitmap_len = app.game.hitmap_w*app.game.hitmap_h;
+    app.game.hitmap = malloc(app.game.hitmap_len);
+    app.game.player_name = tmp;
+    app.game.player_name_ref = 0;
 
     // player setup
     sprite_init(&app.game.hero, 
@@ -943,7 +960,7 @@ int main( int argc, char* args[] )
             fogo_png, fogo_png_len // source
             );
 
-	game_init(&app.game);
+    game_init(&app.game);
 
     app.state = STATE_MENU;
     handle_menu_music();
@@ -963,7 +980,7 @@ int main( int argc, char* args[] )
         {
             switch(app.state) {
                 case STATE_GAME: app.state = game_event  (&app.game,   &event); break;
-                case STATE_HIGHSCORE:   app.state = highscore_event (&app.game,   &event); break;
+                case STATE_HIGHSCORE:  app.state = highscore_event (&app.game,   &event); break;
                 case STATE_MENU:   app.state = menu_event  (&app.menu,   &event); break;
                 case STATE_CREDIT: app.state = credit_event(&app.credit, &event); break;
                 case STATE_GAMEOVER: app.state = gameover_event(&app.game, &event); break;
@@ -977,10 +994,10 @@ int main( int argc, char* args[] )
                     switch(event.key.keysym.sym) {
                         case SDLK_q:
                             app.state = STATE_QUIT;
-							break;
+                            break;
                         case SDLK_h:
                             app.game.heatmap ^= 1;
-							break;
+                            break;
                         case SDLK_f:
                             fullscreen = toggle_fullscreen(fullscreen);
                             break;
@@ -999,6 +1016,15 @@ int main( int argc, char* args[] )
                     handle_ingame_music(); 
                 }
                 break;
+            case STATE_GAMEOVER: 
+                gameover_render(&app.game, app.screen); 
+                break;
+            case STATE_HIGHSCORE: 
+                highscore_render(&app.game, app.screen); 
+                if(last_state == STATE_GAMEOVER){
+                    send_highscore(app.game.elapsed, app.game.body_count, app.game.player_name);
+                }
+                break;
             case STATE_MENU:   
                 menu_render  (&app.menu,   app.screen);
                 if(last_state != STATE_MENU){
@@ -1006,26 +1032,11 @@ int main( int argc, char* args[] )
                     handle_menu_music(); 
                 }
                 break;
-
             case STATE_CREDIT: 
                 credit_render(&app.credit, app.screen); 
                 if(last_state != STATE_CREDIT){
                     halt_music();
                     handle_credit_music(); 
-                }
-                break;
-            case STATE_GAMEOVER: 
-                gameover_render(&app.game, app.screen); 
-                if(last_state != STATE_CREDIT){
-                    /*halt_music();*/
-                    /*handle_gameover_music(); */
-                }
-                break;
-            case STATE_HIGHSCORE: 
-                highscore_render(&app.game, app.screen); 
-                if(last_state != STATE_CREDIT){
-                    /*halt_music();*/
-                    /*handle_gameover_music(); */
                 }
                 break;
         }
