@@ -66,6 +66,7 @@ typedef enum {
     STATE_PAUSE,
     STATE_CREDIT,
     STATE_GAMEOVER,
+    STATE_HIGHSCORE,
     STATE_QUIT
 } State; 
 
@@ -410,6 +411,18 @@ State gameover_event(Game *game, SDL_Event *event) {
     return STATE_GAMEOVER;
 }
 
+State highscore_event(Game *game, SDL_Event *event) { 
+    switch(event->type) {
+        case SDL_KEYDOWN:
+            if(event->key.keysym.sym == key_start ||
+               event->key.keysym.sym == key_fire)
+			{
+                    return STATE_MENU;
+            }
+    }
+    return STATE_HIGHSCORE;
+}
+
 State menu_event(Menu *menu, SDL_Event *event) { 
     switch(event->type) {
         case SDL_KEYDOWN:
@@ -426,6 +439,7 @@ State menu_event(Menu *menu, SDL_Event *event) {
                     switch(menu->selected) {
                         case MENU_START:  return STATE_GAME;
                         case MENU_CREDIT: return STATE_CREDIT;
+                        case MENU_HIGHSCORE: return STATE_HIGHSCORE;
                         case MENU_QUIT:   return STATE_QUIT;
                     }
             }
@@ -731,6 +745,7 @@ void menu_render(Menu *menu, SDL_Surface *screen)
 
 void gameover_render(Game *game, SDL_Surface *screen)
 {
+
     /*game_render(game, screen);*/
     SDL_BlitSurface( game->background, NULL, screen, NULL );
     text_write_raw(screen, 165, 250, "GAME OVER", red, 120);
@@ -750,6 +765,27 @@ void gameover_render(Game *game, SDL_Surface *screen)
     // TODO NET PING HIGH SCORE 
 }
 
+void highscore_render(Game *game, SDL_Surface *screen)
+{
+    Uint32 ticks = SDL_GetTicks();
+
+    int x = (1+cos(ticks/15000.0))*(game->background->w/2-screen->w/2);
+    int y = (1+sin(ticks/15000.0))*(game->background->h/2-screen->h/2);
+
+    SDL_Rect src = {x, y, screen->w, screen->h};
+    SDL_BlitSurface( game->background, &src, screen, NULL );
+
+    text_write_raw(screen, 100, 100, "Global Highscore", red, 74);
+
+    
+
+    int i;
+    for (i = 0; i < 10; i++) {
+        int position = 200 + i * 50;
+        text_write_raw(screen, 200, position, "FMC", red, 36);
+        text_write_raw(screen, 300, position, " ............................ 5003304", white, 36);
+    }
+}
 void credit_render(Credit *credit, SDL_Surface *screen)
 {
     Uint32 ticks = SDL_GetTicks();
@@ -927,6 +963,7 @@ int main( int argc, char* args[] )
         {
             switch(app.state) {
                 case STATE_GAME: app.state = game_event  (&app.game,   &event); break;
+                case STATE_HIGHSCORE:   app.state = highscore_event (&app.game,   &event); break;
                 case STATE_MENU:   app.state = menu_event  (&app.menu,   &event); break;
                 case STATE_CREDIT: app.state = credit_event(&app.credit, &event); break;
                 case STATE_GAMEOVER: app.state = gameover_event(&app.game, &event); break;
@@ -979,6 +1016,13 @@ int main( int argc, char* args[] )
                 break;
             case STATE_GAMEOVER: 
                 gameover_render(&app.game, app.screen); 
+                if(last_state != STATE_CREDIT){
+                    /*halt_music();*/
+                    /*handle_gameover_music(); */
+                }
+                break;
+            case STATE_HIGHSCORE: 
+                highscore_render(&app.game, app.screen); 
                 if(last_state != STATE_CREDIT){
                     /*halt_music();*/
                     /*handle_gameover_music(); */
