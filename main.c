@@ -553,7 +553,7 @@ State game_render(Game *game, SDL_Surface *screen)
     // move player
     int i,n,x,y;
 
-    if(game->enemy_count <= MAX_ENEMIES && (rand()%FPS) == 0)
+    if(game->enemy_count < MAX_ENEMIES && (rand()%FPS) == 0)
         game->enemy_count ++;
 
     float dx=game->pressed[key_right]-game->pressed[key_left];
