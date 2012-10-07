@@ -1,15 +1,7 @@
 *.o
-*.png
-*.jpg
-*.bmp
-*.ogg
-*.wav
-*.ttf
 sprite.c
 inferno
 stdout.txt
-*.wav
-*.ttf
 acid.c
 adler.c
 m60.c
